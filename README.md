@@ -30,21 +30,34 @@ Open the site in Safari (iPhone) or Chrome (Android) and use **Share → Add to 
 
 ## Deploy
 
-Every push to `main` builds and deploys to GitHub Pages ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
+Every push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 
-GitHub Pages only hosts the app's files, not the data. For data that syncs across devices, use Supabase below.
+1. **Database:** applies new migrations in [`supabase/migrations`](supabase/migrations) and pushes auth settings from [`supabase/config.toml`](supabase/config.toml).
+2. **App:** builds and publishes to GitHub Pages at https://blakewell.github.io/eden-calendar/.
 
-## Turn on sync (Supabase, free tier)
+GitHub Pages hosts only the app. The data lives in Supabase.
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run [`supabase/schema.sql`](supabase/schema.sql).
-3. In **Authentication → URL Configuration**, add the site URLs (the GitHub Pages URL, and `http://localhost:5173` for development) to the redirect URLs.
-4. From **Project Settings → API**, copy the project URL and anon key:
-   - Locally: copy `.env.example` to `.env.local` and fill them in.
-   - For the deployed site: add them as repository **variables** (Settings → Secrets and variables → Actions → Variables) named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then re-run the deploy.
-5. Sign in with an email magic link, using the same email on every device.
+### Repository settings the workflow uses
 
-Row-level security makes sure each account only sees its own schedule. The anon key is meant to be public.
+| Name | Kind | What |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | variable | Project URL |
+| `VITE_SUPABASE_ANON_KEY` | variable | Publishable key (safe to be public) |
+| `SUPABASE_PROJECT_REF` | variable | Project ref |
+| `SUPABASE_ACCESS_TOKEN` | secret | Personal access token from supabase.com/dashboard/account/tokens |
+| `SUPABASE_DB_PASSWORD` | secret | Database password |
+| `GOOGLE_CLIENT_ID` | variable | Google OAuth client ID (for Google sign-in) |
+| `GOOGLE_CLIENT_SECRET` | secret | Google OAuth client secret |
+
+Without the secrets, the database step is skipped and the app still deploys.
+
+### Changing the database
+
+Add a new file to `supabase/migrations/` (e.g. `supabase migration new add_something`), commit, and push to `main`.
+
+## Local development with sync
+
+`.env.local` (git-ignored) holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Sign in with Google or an email link. Each account only sees its own schedule (row-level security).
 
 ## Tech
 

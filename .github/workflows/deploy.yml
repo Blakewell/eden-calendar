@@ -1,4 +1,7 @@
-name: Deploy to GitHub Pages
+name: Deploy
+
+# Every push to main: apply database migrations and auth settings to Supabase,
+# then build the app and publish it to GitHub Pages.
 
 on:
   push:
@@ -11,11 +14,46 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
+  database:
+    runs-on: ubuntu-latest
+    env:
+      # Repository secrets. Until they're set, this job skips its steps.
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      # Read by supabase/config.toml once Google sign-in is turned on.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+    steps:
+      - name: Check for Supabase credentials
+        id: creds
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_DB_PASSWORD" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Supabase secrets not set; skipping database deploy."
+          fi
+      - if: steps.creds.outputs.ok
+        uses: actions/checkout@v4
+      - if: steps.creds.outputs.ok
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - if: steps.creds.outputs.ok
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply migrations
+        if: steps.creds.outputs.ok
+        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --yes
+      - name: Push auth settings
+        if: steps.creds.outputs.ok
+        run: supabase config push --yes
+
   deploy:
+    needs: database
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -27,8 +65,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Optional: set these as repository variables to turn on sync.
-      # The anon key is safe to expose; row-level security protects the data.
+      # Repository variables. The publishable key is meant to be public;
+      # row-level security protects the data.
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}

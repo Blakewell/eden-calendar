@@ -1,4 +1,3 @@
--- Run this once in Supabase → SQL Editor.
 -- Everything (routines, goals, assignments, fun plans, check-offs, settings) lives in one
 -- table; `data` holds the fields for each kind.
 
