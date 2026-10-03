@@ -19,8 +19,8 @@ A calm daily schedule for Eden, a teen, used mostly on her phone. It answers thr
 | Kind | Color | What it is | On the calendar? |
 | --- | --- | --- | --- |
 | Routine | blue | Set times on chosen weekdays, or just once (school, band) | Always |
-| Daily goal | sage | Minutes to spend on chosen days, optionally between two dates; checked off per day | When it has a start time ("At a time"); otherwise "Anytime" |
-| Assignment | clay | Flexible work planned for a day, with an estimate and optional due date; unfinished ones carry over to today | No |
+| Daily goal | sage | Minutes to spend on chosen days, optionally between two dates; checked off per day | When it has a usual start time ("At a time"), or when an Anytime goal is scheduled for that day |
+| Assignment | clay | Flexible work planned for a day, with an estimate and optional due date; unfinished ones carry over to today | When scheduled for that day |
 | Fun | rose | Optional plans on a day | When timed; otherwise listed under "Maybe today" |
 
 ## Time: 10-minute chunks
@@ -59,8 +59,13 @@ The current page is marked in the menu. Tapping the backdrop or pressing Escape 
 3. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
    **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
-4. **Daily goals** checklist (all goals for the day, showing time when set), **Assignments** checklist, and **Maybe today** (untimed fun).
-5. A floating **+ Add** button asks which kind, then opens the editor.
+4. **Scheduling goals and assignments** (all for that day only):
+   - **One tap:** each Anytime goal and unscheduled assignment in the checklists has a **Schedule** button. It goes into the first free gap long enough for it, starting on a 10-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
+   - **Tap an empty spot:** the picker first offers the day's unscheduled goals and assignments ("Fit something in at 3:00 PM"), then "Or add something new" with the four kinds.
+   - Once on the calendar it can be dragged like anything else, is checked off as usual, and no longer counts in "to fit in".
+   - Its editor offers **Take it off the calendar for this day** (Anytime goals and assignments go back to the checklist) or **Back to its usual time** (timed goals).
+5. **Daily goals** checklist (all goals for the day, showing time when set), **Assignments** checklist, and **Maybe today** (untimed fun).
+6. A floating **+ Add** button asks which kind, then opens the editor.
 
 ### Daily goals
 
@@ -81,13 +86,13 @@ A flat list of records (`src/lib/types.ts`), stored either in the browser (local
 | Kind | Fields |
 | --- | --- |
 | `routine` | title, start, end, days, date (one-off) |
-| `goal` | title, minutes, start (HH:MM or null), moved (date → HH:MM for days it was dragged), days, from, until |
-| `task` | title, minutes, date, due, doneOn |
+| `goal` | title, minutes, start (usual time, HH:MM, or null for Anytime), moved (date → HH:MM: where it goes that day, from a drag or Schedule), days, from, until |
+| `task` | title, minutes, date, due, doneOn, at (`{date, start}` when scheduled on the calendar for one day) |
 | `fun` | title, date, start, end |
 | `check` | goal id + date (a goal done on a day) |
 | `settings` | awake hours for weekdays and weekends |
 
-New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` and `moved` existed are read as Anytime with no moves (`split` in `plan.ts`). When a goal is moved, `moved` entries for past days are dropped. Changing a goal's usual time in the editor clears its `moved` entries.
+New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` and `moved` existed are read as Anytime with no moves, and assignments without `at` as unscheduled (`split` in `plan.ts`). An assignment's `at` is kept when it's edited, unless its planned day changes. When a goal is moved, `moved` entries for past days are dropped. Changing a goal's usual time in the editor clears its `moved` entries.
 
 Dates are local `YYYY-MM-DD` strings and times are `HH:MM`.
 
@@ -127,6 +132,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-03:** Schedule Anytime goals and assignments onto the calendar for a day: one-tap **Schedule** (next free gap), or tap an empty spot and pick one. Unschedule from the editor.
 
 - **2026-10-03:** Safe development: `npm run dev` is always local mode; `dev:supabase` (local Docker Supabase) and `dev:live` (explicit) added.
 

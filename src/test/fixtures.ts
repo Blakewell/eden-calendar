@@ -38,6 +38,7 @@ export const task = (over: Partial<Task> = {}): Task => ({
   date: SAT,
   due: null,
   doneOn: null,
+  at: null,
   ...over,
 })
 

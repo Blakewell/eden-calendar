@@ -268,6 +268,90 @@ describe('the day calendar', () => {
   })
 })
 
+describe('scheduling goals and assignments', () => {
+  const calendar = () => within(screen.getByRole('region', { name: 'Schedule' }))
+
+  it('one tap puts an anytime goal in the next free gap today, for today only', async () => {
+    const { user, all } = await renderPlanner([
+      fun({ title: 'Lunch', start: '13:00', end: '14:00' }),
+      goal({ title: 'Reading', minutes: 30 }),
+    ])
+    expect(screen.getByRole('region', { name: 'Time today' })).toHaveTextContent('30 min to fit in')
+
+    await user.click(screen.getByRole('button', { name: 'Schedule Reading' }))
+    // It's 1:15 PM and lunch runs until 2, so the next free gap starts at 2.
+    expect(screen.getByRole('status')).toHaveTextContent('Reading is on at 2:00 PM')
+    expect(calendar().getByText('Reading').closest('.card')).toHaveClass('kind-goal')
+    expect(screen.getByRole('region', { name: 'Time today' })).toHaveTextContent('Nothing left to fit in')
+    expect(screen.queryByRole('button', { name: 'Schedule Reading' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(all().find((r) => r.kind === 'goal')).toMatchObject({ start: null, moved: { [SAT]: '14:00' } }),
+    )
+
+    // Tomorrow it's back in the checklist.
+    await user.click(screen.getByRole('button', { name: 'Next day' }))
+    expect(screen.getByRole('button', { name: 'Schedule Reading' })).toBeInTheDocument()
+  })
+
+  it('one tap schedules an assignment too, and checking it off shows it done on the calendar', async () => {
+    const { user, all } = await renderPlanner([task({ title: 'Lab write-up', minutes: 50 })])
+    await user.click(screen.getByRole('button', { name: 'Schedule Lab write-up' }))
+    await waitFor(() => expect(all()[0]).toMatchObject({ at: { date: SAT, start: '13:20' } }))
+    expect(calendar().getByText('Lab write-up')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Lab write-up done' }))
+    expect(calendar().getByText('Lab write-up').closest('.card')).toHaveClass('done')
+  })
+
+  it('says so gently when nothing fits', async () => {
+    const { user, store } = await renderPlanner([
+      routine({ title: 'Tournament', days: [6], start: '09:00', end: '22:20' }),
+      goal({ title: 'Reading', minutes: 30 }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'Schedule Reading' }))
+    expect(screen.getByRole('status')).toHaveTextContent('No free gap long enough for Reading left today')
+    expect(store.put).not.toHaveBeenCalled()
+  })
+
+  it('tapping an empty spot offers the day’s unscheduled goals and assignments first', async () => {
+    const { user, all } = await renderPlanner([
+      goal({ title: 'Reading', minutes: 30 }),
+      goal({ title: 'Piano', start: '16:00' }), // already has a time
+      task({ title: 'Essay', minutes: 60 }),
+    ])
+    fireEvent.click(document.querySelector('.grid')!, { clientY: 14 * 6 * 6 + 5 }) // 3:00 PM
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByRole('heading', { name: 'Fit something in at 3:00 PM' })).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: /Piano/ })).not.toBeInTheDocument()
+    expect(dialog.getByRole('heading', { name: 'Or add something new' })).toBeInTheDocument()
+
+    await user.click(dialog.getByRole('button', { name: /Essay/ }))
+    await waitFor(() =>
+      expect(all().find((r) => r.kind === 'task')).toMatchObject({ at: { date: SAT, start: '15:00' } }),
+    )
+    expect(calendar().getByText('Essay')).toBeInTheDocument()
+  })
+
+  it('takes a scheduled goal back off the calendar for the day', async () => {
+    const { user, all } = await renderPlanner([goal({ title: 'Reading', moved: { [SAT]: '15:00' } })])
+    await user.click(calendar().getByText('Reading'))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Take it off the calendar for this day' }),
+    )
+    await waitFor(() => expect(all()[0]).toMatchObject({ moved: {} }))
+    expect(screen.getByRole('button', { name: 'Schedule Reading' })).toBeInTheDocument()
+  })
+
+  it('puts a moved timed goal back at its usual time', async () => {
+    const { user, all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', moved: { [SAT]: '19:00' } })])
+    await user.click(calendar().getByText('Piano'))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Back to its usual time (4:00 PM)' }),
+    )
+    await waitFor(() => expect(all()[0]).toMatchObject({ start: '16:00', moved: {} }))
+  })
+})
+
 describe('dragging on the calendar', () => {
   // Each 10-minute chunk is 14px tall.
   function drag(card: Element, dy: number, pointerType = 'mouse') {

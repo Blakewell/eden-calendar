@@ -16,7 +16,7 @@ export function split(recs: Rec[]): Data {
   for (const r of recs) {
     if (r.kind === 'routine') data.routines.push(r)
     else if (r.kind === 'goal') data.goals.push({ ...r, start: r.start ?? null, moved: r.moved ?? {} })
-    else if (r.kind === 'task') data.tasks.push(r)
+    else if (r.kind === 'task') data.tasks.push({ ...r, at: r.at ?? null })
     else if (r.kind === 'fun') data.fun.push(r)
     else if (r.kind === 'check') data.checks.add(r.id)
     else if (r.kind === 'settings') data.settings = { ...DEFAULT_SETTINGS, ...r }
@@ -60,24 +60,34 @@ export function tasksOn(tasks: Task[], date: string, today: string): Task[] {
     })
 }
 
-// A timed goal's start on a given day: where it was dragged that day, or its usual time.
+// A goal's start on a given day: where it was put that day, else its usual time
+// (null for an anytime goal that isn't scheduled that day).
 export function goalStartOn(goal: Goal, date: string): string | null {
-  return goal.start ? (goal.moved[date] ?? goal.start) : null
+  return goal.moved[date] ?? goal.start
+}
+
+// An assignment's start on a given day, if it's been scheduled for that day.
+export function taskStartOn(task: Task, date: string): string | null {
+  return task.at?.date === date ? task.at.start : null
 }
 
 // Anything with a set time on the day's calendar.
-export type Block = { rec: Routine | Fun | Goal; start: string; end: string }
+export type Block = { rec: Routine | Fun | Goal | Task; start: string; end: string }
 
 export type Slot = { type: 'block'; block: Block } | { type: 'free'; start: string; end: string; minutes: number }
 
-export function blocksOn(data: Data, date: string): Block[] {
+export function blocksOn(data: Data, date: string, today: string): Block[] {
   const blocks: Block[] = routinesOn(data.routines, date).map((r) => ({ rec: r, start: r.start, end: r.end }))
   for (const f of funOn(data.fun, date)) {
     if (f.start) blocks.push({ rec: f, start: f.start, end: f.end && f.end > f.start ? f.end : f.start })
   }
   for (const g of goalsOn(data.goals, date)) {
     const start = goalStartOn(g, date)
-    if (start) blocks.push({ rec: g, start, end: fromMinutes(Math.min(toMinutes(start) + g.minutes, DAY)) })
+    if (start) blocks.push({ rec: g, start, end: endAfter(start, g.minutes) })
+  }
+  for (const t of tasksOn(data.tasks, date, today)) {
+    const start = taskStartOn(t, date)
+    if (start) blocks.push({ rec: t, start, end: endAfter(start, t.minutes) })
   }
   return blocks.sort((a, b) => a.start.localeCompare(b.start))
 }
@@ -85,6 +95,19 @@ export function blocksOn(data: Data, date: string): Block[] {
 // The calendar splits each hour into 10-minute chunks.
 export const CHUNK = 10
 const DAY = 24 * 60
+const endAfter = (start: string, minutes: number) => fromMinutes(Math.min(toMinutes(start) + minutes, DAY))
+
+// The first free gap (between blocks, within awake hours, from `after` on)
+// with room for `minutes`, starting on a 10-minute mark. Null if none.
+export function findSlot(blocks: Block[], hours: [string, string], minutes: number, after: string): string | null {
+  const earliest = Math.ceil(Math.max(toMinutes(after), toMinutes(hours[0])) / CHUNK) * CHUNK
+  for (const slot of timeline(blocks, hours).slots) {
+    if (slot.type !== 'free') continue
+    const start = Math.max(Math.ceil(toMinutes(slot.start) / CHUNK) * CHUNK, earliest)
+    if (start + minutes <= toMinutes(slot.end)) return fromMinutes(start)
+  }
+  return null
+}
 // Short or open-ended blocks still get enough room to tap and read.
 export const MIN_BLOCK = 2 * CHUNK
 
@@ -136,22 +159,35 @@ export function calendarRange(blocks: Block[], hours: [string, string]): [number
   return [Math.floor(from / 60) * 60, Math.min(DAY, Math.ceil(to / 60) * 60)]
 }
 
-// Things on the calendar that can be dragged; routines are fixed.
-export const isMovable = (rec: Block['rec']): rec is Goal | Fun => rec.kind !== 'routine'
+// Things on the calendar that can be moved; routines are fixed.
+export type Movable = Goal | Fun | Task
+export const isMovable = (rec: Block['rec']): rec is Movable => rec.kind !== 'routine'
 
-// The record after dragging it to `start` on `date`. Fun keeps its length.
-// A goal moves for that day only; past days' moves are dropped as they no
-// longer matter, and moving it back to its usual time clears the exception.
-export function moveTo(rec: Goal | Fun, date: string, start: string, today: string): Goal | Fun {
+// The record after putting it at `start` on `date` (by dragging or scheduling).
+// Fun keeps its length. A goal or assignment goes there for that day only.
+// Past days' goal moves are dropped as they no longer matter, and putting a
+// goal back at its usual time clears the exception.
+export function moveTo<T extends Movable>(rec: T, date: string, start: string, today: string): T {
   if (rec.kind === 'fun') {
     if (!rec.start) return rec
     const end = rec.end && fromMinutes(toMinutes(rec.end) + toMinutes(start) - toMinutes(rec.start))
     return { ...rec, start, end }
   }
-  const moved = Object.fromEntries(Object.entries(rec.moved).filter(([d]) => d >= today && d !== date))
+  if (rec.kind === 'task') return { ...rec, at: { date, start } }
+  const moved = pruneMoves(rec.moved, date, today)
   if (start !== rec.start) moved[date] = start
   return { ...rec, moved }
 }
+
+// Takes a goal or assignment off the calendar for `date`: an anytime goal or
+// assignment goes back to the checklist; a timed goal goes back to its usual time.
+export function unschedule<T extends Goal | Task>(rec: T, date: string, today: string): T {
+  if (rec.kind === 'task') return { ...rec, at: null }
+  return { ...rec, moved: pruneMoves(rec.moved, date, today) }
+}
+
+const pruneMoves = (moved: Record<string, string>, date: string, today: string) =>
+  Object.fromEntries(Object.entries(moved).filter(([d]) => d >= today && d !== date))
 
 export function isWeekend(date: string): boolean {
   const wd = weekday(date)

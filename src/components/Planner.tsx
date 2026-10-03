@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { EditableKind, Goal, Store, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
-import { CHUNK, checkId, makeCheck, moveTo } from '../lib/plan'
-import { nowHHMM, roundUp, today } from '../lib/dates'
+import { CHUNK, checkId, goalStartOn, goalsOn, makeCheck, moveTo, taskStartOn, tasksOn, unschedule } from '../lib/plan'
+import { formatTime, nowHHMM, roundUp, today } from '../lib/dates'
 import { useData } from '../lib/useData'
 import { DayView } from './DayView'
 import { Editor, type Editable } from './Editor'
@@ -30,6 +30,21 @@ export function Planner({ store, account }: { store: Store; account?: Account })
   function toggleTask(task: Task) {
     put({ ...task, doneOn: task.doneOn ? null : date })
   }
+
+  // Goals and assignments for the day that are still waiting for a time.
+  const unscheduled: (Goal | Task)[] = [
+    ...goalsOn(data.goals, date).filter((g) => !goalStartOn(g, date) && !data.checks.has(checkId(g.id, date))),
+    ...tasksOn(data.tasks, date, today()).filter((t) => !t.doneOn && !taskStartOn(t, date)),
+  ]
+
+  // Editing something that's on the calendar for this day only: offer to take it back off.
+  const rec = editor?.record
+  const scheduledToday =
+    (rec?.kind === 'goal' && rec.moved[date] !== undefined) || (rec?.kind === 'task' && rec.at?.date === date)
+  const unscheduleLabel =
+    rec?.kind === 'goal' && rec.start
+      ? `Back to its usual time (${formatTime(rec.start)})`
+      : 'Take it off the calendar for this day'
 
   return (
     <main className="page">
@@ -91,6 +106,20 @@ export function Planner({ store, account }: { store: Store; account?: Account })
           defaultStart={editor.start ?? (date === today() ? roundUp(nowHHMM(), CHUNK) : '15:00')}
           record={editor.record}
           newKind={editor.newKind}
+          candidates={editor.start && !editor.record ? unscheduled : []}
+          onPlace={(c) => {
+            setEditor(null)
+            put(moveTo(c, date, editor.start!, today()))
+          }}
+          unscheduleLabel={unscheduleLabel}
+          onUnschedule={
+            scheduledToday && (rec?.kind === 'goal' || rec?.kind === 'task')
+              ? () => {
+                  setEditor(null)
+                  put(unschedule(rec, date, today()))
+                }
+              : undefined
+          }
           onSave={(rec) => {
             setEditor(null)
             put(rec)

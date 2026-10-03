@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
-import type { Block, Slot } from '../lib/plan'
+import type { Block, Movable, Slot } from '../lib/plan'
 import { CHUNK, MIN_BLOCK, calendarRange, isMovable, placeBlocks } from '../lib/plan'
-import type { Fun, Goal } from '../lib/types'
 import { formatDuration, formatTime, fromMinutes, toMinutes } from '../lib/dates'
 import type { Editable } from './Editor'
 
@@ -14,7 +13,7 @@ const SLOP = 6
 const DAY = 24 * 60
 
 type Gesture = {
-  rec: Goal | Fun
+  rec: Movable
   target: HTMLElement
   pointerId: number
   touch: boolean
@@ -34,7 +33,7 @@ type Props = {
   isDone: (rec: Editable) => boolean
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
-  onMove: (rec: Goal | Fun, start: string) => void
+  onMove: (rec: Movable, start: string) => void
 }
 
 // The day as a calendar: hours down the side, each split into 10-minute
