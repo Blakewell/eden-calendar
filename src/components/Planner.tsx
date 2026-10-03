@@ -1,18 +1,23 @@
-import { useState, type ReactNode } from 'react'
-import type { Goal, Store, Task } from '../lib/types'
+import { useState } from 'react'
+import type { EditableKind, Goal, Store, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
-import { checkId, makeCheck } from '../lib/plan'
-import { nowHHMM, today } from '../lib/dates'
+import { CHUNK, checkId, makeCheck } from '../lib/plan'
+import { nowHHMM, roundUp, today } from '../lib/dates'
 import { useData } from '../lib/useData'
 import { DayView } from './DayView'
 import { Editor, type Editable } from './Editor'
 import { WeekSetup } from './WeekSetup'
+import { Goals } from './Goals'
+import { Menu, type Account, type View } from './Menu'
 
-type EditorState = { record: Editable | null } | null
+// `start` is set when adding by tapping an empty spot on the calendar.
+type EditorState = { record: Editable | null; newKind?: EditableKind; start?: string } | null
 
-export function Planner({ store, footer }: { store: Store; footer: ReactNode }) {
+// `account` is set when signed in (synced); local mode has none.
+export function Planner({ store, account }: { store: Store; account?: Account }) {
   const { data, loaded, error, put, remove } = useData(store)
-  const [view, setView] = useState<'day' | 'week'>('day')
+  const [view, setView] = useState<View>('day')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [date, setDate] = useState(today)
   const [editor, setEditor] = useState<EditorState>(null)
 
@@ -36,20 +41,29 @@ export function Planner({ store, footer }: { store: Store; footer: ReactNode }) 
             </span>
           ))}
         </span>
-        <button className="link" onClick={() => setView(view === 'day' ? 'week' : 'day')}>
-          {view === 'day' ? 'My week' : '← Back to day'}
+        <button className="quiet round menu-button" aria-label="Menu" onClick={() => setMenuOpen(true)}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
         </button>
       </div>
 
       {error && <p className="error">{error}</p>}
 
       {loaded &&
-        (view === 'day' ? (
+        (view === 'goals' ? (
+          <Goals
+            data={data}
+            onEdit={(record) => setEditor({ record })}
+            onAdd={() => setEditor({ record: null, newKind: 'goal' })}
+          />
+        ) : view === 'day' ? (
           <DayView
             data={data}
             date={date}
             onDate={setDate}
             onEdit={(record) => setEditor({ record })}
+            onAddAt={(start) => setEditor({ record: null, start })}
             onToggleGoal={toggleGoal}
             onToggleTask={toggleTask}
           />
@@ -57,18 +71,25 @@ export function Planner({ store, footer }: { store: Store; footer: ReactNode }) 
           <WeekSetup data={data} onEdit={(record) => setEditor({ record })} onSettings={put} />
         ))}
 
-      <button className="add primary" onClick={() => setEditor({ record: null })}>
-        + Add
-      </button>
+      {view === 'goals' ? (
+        <button className="add primary kind-goal" onClick={() => setEditor({ record: null, newKind: 'goal' })}>
+          + Add goal
+        </button>
+      ) : (
+        <button className="add primary" onClick={() => setEditor({ record: null })}>
+          + Add
+        </button>
+      )}
 
-      <footer className="muted small">{footer}</footer>
+      {menuOpen && <Menu view={view} account={account} onView={setView} onClose={() => setMenuOpen(false)} />}
 
       {editor && (
         <Editor
           key={editor.record?.id ?? 'new'}
           date={date}
-          defaultStart={date === today() ? nowHHMM() : '15:00'}
+          defaultStart={editor.start ?? (date === today() ? roundUp(nowHHMM(), CHUNK) : '15:00')}
           record={editor.record}
+          newKind={editor.newKind}
           onSave={(rec) => {
             setEditor(null)
             put(rec)

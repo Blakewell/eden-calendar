@@ -1,6 +1,6 @@
 # Eden's Day: project instructions
 
-A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built by her dad (Blake). The README covers features and setup; this file is the working agreement for changes.
+A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built by her dad (Blake). The README covers features and setup, `docs/DESIGN.md` covers how the app works, and this file is the working agreement for changes.
 
 ## Product principles
 
@@ -8,11 +8,13 @@ A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built b
 - **Phone first.** Design and verify at 375px wide before desktop. No horizontal scroll, tap targets ≥ 40px, text inputs ≥ 16px (stops iOS zooming in). It's installable to the home screen (manifest + apple-touch-icon); keep that working.
 - **Four kinds, four colors.** Keep them distinct and consistent everywhere (cards, legend, editor, summary bar), via the `.kind-*` classes and `--routine|goal|task|fun` tokens:
   - **Routine** (blue): fixed blocks repeating on chosen weekdays, or "just once" (school, band).
-  - **Daily goal** (sage): minutes on chosen days, optional start/end dates; checked off per day.
+  - **Daily goal** (sage): minutes on chosen days, optional start/end dates and an optional start time (then it takes a slot on the calendar); checked off per day.
   - **Assignment** (clay): flexible work planned for a specific day, with an estimate and optional due date; unfinished ones carry over to *today*.
   - **Fun** (rose): optional plans on a day, timed (on the timeline) or "sometime" ("Maybe today"); never counted as work to fit in.
 - **Weekdays differ from weekends** (separate awake hours; Weekdays / Weekends / Every day presets).
 - **Easy to adjust:** tap anything to edit; −/+ steppers for durations.
+- **10-minute chunks:** the day calendar splits each hour into six 10-minute chunks; steppers and time pickers move in 10s (`CHUNK` in `src/lib/plan.ts`).
+- **Menu** (☰, top right) for Today / Daily goals / My week and Sign out.
 - Light and dark mode both supported; define colors as CSS tokens in `src/index.css` and check both.
 
 ## Architecture
@@ -38,16 +40,19 @@ A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built b
 
 ## Workflow
 
+- **Keep `docs/DESIGN.md` up to date.** Any change to what Eden sees, the data, or the architecture updates the design doc (and its change log) in the same pull request.
+
 - **`main` is protected:** changes go through a pull request, and the `App (lint, types, tests, build)` and `Database (migrations, security tests)` checks must pass. Work on a branch and open a PR.
 - **Merging to `main` deploys everything** (`.github/workflows/deploy.yml`): `supabase db push` (migrations), `supabase config push` (auth settings from `supabase/config.toml`), then the GitHub Pages build.
 - **Database changes** are new files in `supabase/migrations/` only; never edit an applied migration. Add or extend pgTAP tests in `supabase/tests/database/` for anything touching access.
 - **Before changing `supabase/config.toml`**, preview with `supabase config push` and answer `n`. The CLI's starter defaults differ from the live project (email confirmations, OTP length, MFA), so keep local values matched to remote except for intended changes.
 - **Tests are required** with every change:
   - logic in `src/lib/*.test.ts`
-  - user-facing behavior in `src/components/*.test.tsx` (Testing Library, by role/label)
+  - user-facing behavior in `src/components/*.test.tsx` (Testing Library + user-event, by role/label)
+  - real-browser flows at phone size, light and dark, in `e2e/*.spec.ts` (Playwright, local mode)
   - access rules in pgTAP
   
-  Run `npm test`, `npx oxlint --deny-warnings` and `npm run typecheck` before pushing. Tests freeze time to Sat Oct 3 2026 (`src/test/fixtures.ts`).
+  Run `npm test`, `npm run test:e2e`, `npx oxlint --deny-warnings` and `npm run typecheck` before pushing. CI runs all of them (plus pgTAP) on every pull request. Tests freeze time to Sat Oct 3 2026 (`src/test/fixtures.ts`).
 - Formatting: Prettier with `--single-quote --no-semi --print-width 120`.
 - Verify UI changes in a browser at phone width (light and dark) before calling them done.
 

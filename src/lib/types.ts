@@ -10,12 +10,14 @@ export type Routine = {
 }
 
 // Something to spend a set amount of time on, on chosen days, optionally
-// only between two dates (e.g. a summer reading goal).
+// only between two dates (e.g. a summer reading goal). With a start time it
+// takes a slot on the day's calendar; without one it's "anytime".
 export type Goal = {
   kind: 'goal'
   id: string
   title: string
   minutes: number
+  start: string | null // HH:MM; older goals saved before this field have none
   days: number[]
   from: string | null
   until: string | null

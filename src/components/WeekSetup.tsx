@@ -1,6 +1,6 @@
 import type { Data } from '../lib/plan'
 import type { Settings } from '../lib/types'
-import { formatDays, formatDuration, formatTime, fromISODate, today } from '../lib/dates'
+import { formatDays, formatTime, fromISODate, today } from '../lib/dates'
 import type { Editable } from './Editor'
 
 const shortDate = (s: string) =>
@@ -24,7 +24,7 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
     <>
       <header className="day-header">
         <h1>My week</h1>
-        <p className="muted">The things that repeat. Tap anything to change it.</p>
+        <p className="muted">Your set times and awake hours. Tap anything to change it.</p>
       </header>
 
       <section>
@@ -72,25 +72,6 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
                 <span className="title">{r.title}</span>
                 <span className="meta">
                   {formatDays(r.days)} · {formatTime(r.start)} – {formatTime(r.end)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h3>Daily goals</h3>
-        {data.goals.length === 0 && <p className="muted small">Nothing yet. Add things like reading or practice.</p>}
-        <ul className="list">
-          {data.goals.map((g) => (
-            <li key={g.id}>
-              <button className="card kind-goal" onClick={() => onEdit(g)}>
-                <span className="title">{g.title}</span>
-                <span className="meta">
-                  {formatDuration(g.minutes)} · {formatDays(g.days)}
-                  {(g.from || g.until) &&
-                    ` · ${g.from ? shortDate(g.from) : 'now'} – ${g.until ? shortDate(g.until) : 'ongoing'}`}
                 </span>
               </button>
             </li>

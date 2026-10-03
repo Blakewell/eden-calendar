@@ -60,6 +60,11 @@ export function fromMinutes(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
 }
 
+// Rounds a time up to the next step (e.g. 13:12 -> 13:20 for 10 minutes).
+export function roundUp(hhmm: string, step: number): string {
+  return fromMinutes(Math.min(23 * 60 + 60 - step, Math.ceil(toMinutes(hhmm) / step) * step))
+}
+
 export function formatDuration(min: number): string {
   if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)

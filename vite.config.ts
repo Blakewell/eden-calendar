@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
     // Tests run as if it's Saturday, Oct 3 2026 in a fixed timezone.
     env: { TZ: 'America/Chicago' },
   },
