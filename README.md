@@ -24,6 +24,20 @@ npm run dev
 
 With no configuration the app runs in **local mode**, which saves to the browser it's open in.
 
+## Tests
+
+```bash
+npm test            # unit + component tests (Vitest, Testing Library)
+npm run test:watch  # while developing
+supabase test db    # database security tests (needs Docker; runs in CI)
+```
+
+- `src/lib/*.test.ts`: scheduling rules (which routines, goals and assignments show on a day; carry-over; free time; weekend hours)
+- `src/components/Planner.test.tsx`: the app as Eden uses it (adding, editing, checking off, My week)
+- `supabase/tests/database/`: row-level security (nobody sees anyone else's data; signed-out visitors get nothing) and the invite-only sign-up check
+
+Every pull request runs lint, type checks, all tests and a build ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). `main` only accepts changes through a pull request with those checks passing.
+
 ## On her phone
 
 Open the site in Safari (iPhone) or Chrome (Android) and use **Share → Add to Home Screen**. It opens full-screen with its own icon.
