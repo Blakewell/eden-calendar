@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { awakeHours, blocksOn, checkId, goalsOn, makeCheck, routinesOn, split, tasksOn, timeline } from './plan'
+import {
+  awakeHours,
+  blocksOn,
+  calendarRange,
+  checkId,
+  goalStatus,
+  goalsOn,
+  makeCheck,
+  placeBlocks,
+  routinesOn,
+  split,
+  tasksOn,
+  timeline,
+  type Block,
+} from './plan'
 import { DEFAULT_SETTINGS, type Settings } from './types'
 import { FRI, MON, SAT, SUN, fun, goal, routine, task } from '../test/fixtures'
 
@@ -15,6 +29,18 @@ describe('routinesOn', () => {
     const dentist = routine({ title: 'Dentist', date: MON, days: [] })
     expect(routinesOn([dentist], MON)).toEqual([dentist])
     expect(routinesOn([dentist], addWeek(MON))).toEqual([])
+  })
+})
+
+describe('goalStatus', () => {
+  it('is active with no dates, or when today is inside them (inclusive)', () => {
+    expect(goalStatus(goal(), SAT)).toBe('active')
+    expect(goalStatus(goal({ from: SAT, until: SAT }), SAT)).toBe('active')
+  })
+
+  it('is upcoming before its start date and ended after its end date', () => {
+    expect(goalStatus(goal({ from: SUN }), SAT)).toBe('upcoming')
+    expect(goalStatus(goal({ until: FRI }), SAT)).toBe('ended')
   })
 })
 
@@ -132,13 +158,72 @@ describe('blocksOn', () => {
     expect(blocksOn(data, SAT).map((b) => b.rec.title)).toEqual(['Soccer', "Maya's"])
   })
 
+  it('puts goals with a start time on the calendar for their length', () => {
+    const data = split([goal({ title: 'Piano', start: '16:00', minutes: 40 }), goal({ title: 'Reading' })])
+    expect(blocksOn(data, SAT)).toEqual([expect.objectContaining({ start: '16:00', end: '16:40' })])
+  })
+
+  it('leaves a goal off the calendar on days it does not apply', () => {
+    const data = split([goal({ start: '16:00', days: [1, 2, 3, 4, 5] })])
+    expect(blocksOn(data, SAT)).toEqual([])
+  })
+
+  it('stops a late goal at midnight', () => {
+    const data = split([goal({ start: '23:30', minutes: 60 })])
+    expect(blocksOn(data, SAT)[0]).toMatchObject({ end: '24:00' })
+  })
+
   it('gives a fun block with no end time zero length', () => {
     const data = split([fun({ start: '14:00', end: null })])
     expect(blocksOn(data, SAT)[0]).toMatchObject({ start: '14:00', end: '14:00' })
   })
 })
 
+const block = (start: string, end: string): Block => ({ rec: routine({ title: start, start, end }), start, end })
+
+describe('placeBlocks', () => {
+  it('gives blocks that do not overlap the full width', () => {
+    const placed = placeBlocks([block('09:00', '10:00'), block('10:00', '11:00')])
+    expect(placed.map((p) => [p.lane, p.lanes])).toEqual([
+      [0, 1],
+      [0, 1],
+    ])
+  })
+
+  it('puts overlapping blocks side by side, reusing lanes that free up', () => {
+    const placed = placeBlocks([block('09:00', '12:00'), block('10:00', '10:30'), block('11:00', '11:30')])
+    expect(placed.map((p) => [p.block.start, p.lane, p.lanes])).toEqual([
+      ['09:00', 0, 2],
+      ['10:00', 1, 2],
+      ['11:00', 1, 2],
+    ])
+  })
+
+  it('makes room for a block with no length so the next one does not cover it', () => {
+    const placed = placeBlocks([block('14:00', '14:00'), block('14:10', '15:00')])
+    expect(placed.map((p) => p.lanes)).toEqual([2, 2])
+  })
+})
+
+describe('calendarRange', () => {
+  it('covers awake hours, rounded out to whole hours', () => {
+    expect(calendarRange([], ['06:30', '21:30'])).toEqual([6 * 60, 22 * 60])
+  })
+
+  it('stretches to fit blocks outside awake hours', () => {
+    expect(calendarRange([block('05:10', '06:00'), block('22:00', '23:20')], ['07:00', '21:00'])).toEqual([
+      5 * 60,
+      24 * 60,
+    ])
+  })
+})
+
 describe('split', () => {
+  it('reads goals saved before they had a start time as anytime', () => {
+    const { start: _, ...old } = goal()
+    expect(split([old as never]).goals[0].start).toBeNull()
+  })
+
   it('sorts records by kind and fills missing settings with defaults', () => {
     const g = goal()
     const data = split([

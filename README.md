@@ -7,13 +7,15 @@ A simple, calm daily schedule for Eden, built for her phone. One day at a time: 
 | Kind | Color | What it's for | Example |
 | --- | --- | --- | --- |
 | **Routine** | blue | Fixed blocks that repeat on chosen weekdays (or happen just once) | School, band practice |
-| **Daily goal** | sage | Time to spend on chosen days, optionally between a start and end date | Reading 30 min, clarinet 20 min until Dec 18 |
+| **Daily goal** | sage | Time to spend on chosen days, optionally between a start and end date, and optionally at a set time | Reading 30 min, piano 40 min at 4 PM |
 | **Assignment** | clay | Flexible work planned for a day, with an estimated time and optional due date. Unfinished ones carry over to today | Science lab write-up, 1h, due Mon |
 | **Fun** | rose | Optional plans for a day, at a time or "sometime" | Friend's house, movie night |
 
-The day view shows routine and timed fun blocks with the **free gaps** between them. It also shows how much goal and assignment time is left against the free time she has.
+The day view is a calendar in **10-minute chunks** showing routines, timed fun and timed goals, with the **free gaps** between them. Tap an empty spot to add something there. It also shows how much goal and assignment time is left against the free time she has.
 
-**My week** holds everything that repeats, plus separate wake and sleep times for weekdays and weekends.
+The **menu** (☰) moves between **Today**, **Daily goals** (add, change and remove goals) and **My week** (routines and separate wake and sleep times for weekdays and weekends), and has **Sign out**.
+
+How it all works is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Run it
 
@@ -29,14 +31,16 @@ With no configuration the app runs in **local mode**, which saves to the browser
 ```bash
 npm test            # unit + component tests (Vitest, Testing Library)
 npm run test:watch  # while developing
+npm run test:e2e    # real-browser tests at phone size (Playwright; first run: npx playwright install chromium)
 supabase test db    # database security tests (needs Docker; runs in CI)
 ```
 
 - `src/lib/*.test.ts`: scheduling rules (which routines, goals and assignments show on a day; carry-over; free time; weekend hours)
-- `src/components/Planner.test.tsx`: the app as Eden uses it (adding, editing, checking off, My week)
+- `src/components/Planner.test.tsx`: the app as Eden uses it (adding, editing, checking off, the calendar, the menu, Daily goals, My week)
+- `e2e/`: the same flows in a real browser at 375px, in light and dark mode
 - `supabase/tests/database/`: row-level security (nobody sees anyone else's data; signed-out visitors get nothing) and the invite-only sign-up check
 
-Every pull request runs lint, type checks, all tests and a build ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). `main` only accepts changes through a pull request with those checks passing.
+Every pull request runs lint, type checks, unit, component and browser tests, and a build ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). `main` only accepts changes through a pull request with those checks passing.
 
 ## On her phone
 

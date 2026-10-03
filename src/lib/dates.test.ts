@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, dueLabel, formatDays, formatDuration, fromMinutes, toISODate, toMinutes, weekday } from './dates'
+import {
+  addDays,
+  dueLabel,
+  formatDays,
+  formatDuration,
+  fromMinutes,
+  roundUp,
+  toISODate,
+  toMinutes,
+  weekday,
+} from './dates'
 import { FRI, MON, SAT, SUN } from '../test/fixtures'
 
 describe('dates', () => {
@@ -12,6 +22,12 @@ describe('dates', () => {
   it('adds days across a daylight-saving change without skipping', () => {
     // US DST ends Nov 1 2026.
     expect(addDays('2026-10-31', 2)).toBe('2026-11-02')
+  })
+
+  it('rounds a time up to the next 10 minutes, staying within the day', () => {
+    expect(roundUp('13:12', 10)).toBe('13:20')
+    expect(roundUp('13:20', 10)).toBe('13:20')
+    expect(roundUp('23:55', 10)).toBe('23:50')
   })
 
   it('formats local dates as YYYY-MM-DD', () => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { EditableKind, Fun, Goal, Routine, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
 import { weekday } from '../lib/dates'
+import { CHUNK } from '../lib/plan'
 import { DayPicker } from './DayPicker'
 import { Stepper } from './Stepper'
 
@@ -11,6 +12,7 @@ type Props = {
   date: string // the day being viewed; default for new one-off blocks
   defaultStart: string
   record: Editable | null // null = adding something new
+  newKind?: EditableKind // when adding, skip the "what kind" step
   onSave: (rec: Editable) => void
   onDelete: (id: string) => void
   onClose: () => void
@@ -23,6 +25,8 @@ const PLACEHOLDER: Record<EditableKind, string> = {
   fun: "Friend's house, movie night…",
 }
 
+const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6]
+
 const HINT: Record<EditableKind, string> = {
   routine: 'Set times, like school or band',
   goal: 'Time to spend every day, like reading',
@@ -30,22 +34,23 @@ const HINT: Record<EditableKind, string> = {
   fun: "Optional plans, like a friend's house",
 }
 
-export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }: Props) {
+export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [kind, setKind] = useState<EditableKind | null>(record?.kind ?? null)
+  const [kind, setKind] = useState<EditableKind | null>(record?.kind ?? newKind ?? null)
 
   const r = record
   const [title, setTitle] = useState(r?.title ?? '')
-  const [minutes, setMinutes] = useState(r && (r.kind === 'goal' || r.kind === 'task') ? r.minutes : 30)
+  const [minutes, setMinutes] = useState(
+    r && (r.kind === 'goal' || r.kind === 'task') ? r.minutes : newKind === 'task' ? 40 : 30,
+  )
   const [days, setDays] = useState<number[]>(
-    r && (r.kind === 'routine' || r.kind === 'goal') ? r.days : [weekday(date)],
+    r && (r.kind === 'routine' || r.kind === 'goal') ? r.days : newKind === 'goal' ? EVERY_DAY : [weekday(date)],
   )
   const [once, setOnce] = useState(r?.kind === 'routine' ? r.date !== null : false)
   const [onceDate, setOnceDate] = useState(r && (r.kind === 'routine' || r.kind === 'fun') && r.date ? r.date : date)
-  const [timed, setTimed] = useState(r?.kind === 'fun' ? r.start !== null : true)
-  const [start, setStart] = useState(
-    r && (r.kind === 'routine' || r.kind === 'fun') && r.start ? r.start : defaultStart,
-  )
+  // Fun and goals can have a time or not; new goals start with one so they land on the calendar.
+  const [timed, setTimed] = useState(r?.kind === 'fun' || r?.kind === 'goal' ? r.start !== null : newKind !== 'fun')
+  const [start, setStart] = useState(r && r.kind !== 'task' && r.start ? r.start : defaultStart)
   const [end, setEnd] = useState(r && (r.kind === 'routine' || r.kind === 'fun') && r.end ? r.end : '')
   const [due, setDue] = useState(r?.kind === 'task' ? (r.due ?? '') : '')
   const [workOn, setWorkOn] = useState(r?.kind === 'task' ? r.date : date)
@@ -60,10 +65,10 @@ export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }
 
   function choose(k: EditableKind) {
     setKind(k)
-    if (k === 'goal') setDays([0, 1, 2, 3, 4, 5, 6])
-    if (k === 'task') setMinutes(45)
+    if (k === 'goal') setDays(EVERY_DAY)
+    if (k === 'task') setMinutes(40)
     if (k === 'goal') setMinutes(30)
-    if (k === 'fun') setTimed(false)
+    setTimed(k !== 'fun')
   }
 
   function submit(e: FormEvent) {
@@ -81,6 +86,7 @@ export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }
         id,
         title: t,
         minutes,
+        start: timed ? start : null,
         days,
         from: from || null,
         until: until && (!from || until >= from) ? until : null,
@@ -153,11 +159,17 @@ export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }
               <div className="row">
                 <label>
                   <span>Starts</span>
-                  <input type="time" value={start} onChange={(e) => setStart(e.target.value)} required />
+                  <input
+                    type="time"
+                    step={CHUNK * 60}
+                    value={start}
+                    onChange={(e) => setStart(e.target.value)}
+                    required
+                  />
                 </label>
                 <label>
                   <span>Ends</span>
-                  <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
+                  <input type="time" step={CHUNK * 60} value={end} onChange={(e) => setEnd(e.target.value)} required />
                 </label>
               </div>
               <div className="field">
@@ -197,13 +209,19 @@ export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }
                   <div className="row">
                     <label>
                       <span>From</span>
-                      <input type="time" value={start} onChange={(e) => setStart(e.target.value)} required />
+                      <input
+                        type="time"
+                        step={CHUNK * 60}
+                        value={start}
+                        onChange={(e) => setStart(e.target.value)}
+                        required
+                      />
                     </label>
                     <label>
                       <span>
                         Until <em>(optional)</em>
                       </span>
-                      <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                      <input type="time" step={CHUNK * 60} value={end} onChange={(e) => setEnd(e.target.value)} />
                     </label>
                   </div>
                 )}
@@ -214,7 +232,33 @@ export function Editor({ date, defaultStart, record, onSave, onDelete, onClose }
           {(kind === 'goal' || kind === 'task') && (
             <div className="field">
               <span className="field-label">{kind === 'goal' ? 'How long' : 'About how long'}</span>
-              <Stepper minutes={minutes} step={kind === 'goal' ? 5 : 15} onChange={setMinutes} />
+              <Stepper minutes={minutes} step={CHUNK} onChange={setMinutes} />
+            </div>
+          )}
+
+          {kind === 'goal' && (
+            <div className="field">
+              <span className="field-label">When</span>
+              <div className="segmented">
+                <button type="button" className={!timed ? 'on' : ''} onClick={() => setTimed(false)}>
+                  Anytime
+                </button>
+                <button type="button" className={timed ? 'on' : ''} onClick={() => setTimed(true)}>
+                  At a time
+                </button>
+              </div>
+              {timed && (
+                <label>
+                  <span>Starts</span>
+                  <input
+                    type="time"
+                    step={CHUNK * 60}
+                    value={start}
+                    onChange={(e) => setStart(e.target.value)}
+                    required
+                  />
+                </label>
+              )}
             </div>
           )}
 

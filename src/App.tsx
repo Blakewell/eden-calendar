@@ -25,22 +25,10 @@ function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
   if (!session) return <SignIn db={db} />
   if (hasLocal) return <ImportLocal store={store} onDone={() => setHasLocal(false)} />
 
-  return (
-    <Planner
-      store={store}
-      footer={
-        <>
-          Synced · {session.user.email} ·{' '}
-          <button className="link" onClick={() => db.auth.signOut()}>
-            Sign out
-          </button>
-        </>
-      }
-    />
-  )
+  return <Planner store={store} account={{ email: session.user.email, onSignOut: () => db.auth.signOut() }} />
 }
 
 export default function App() {
   if (supabase) return <SyncedApp db={supabase} />
-  return <Planner store={localStore} footer="Saved on this device" />
+  return <Planner store={localStore} />
 }

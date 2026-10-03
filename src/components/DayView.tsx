@@ -4,17 +4,19 @@ import { awakeHours, blocksOn, checkId, funOn, goalsOn, tasksOn, timeline } from
 import type { Goal, Task } from '../lib/types'
 import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
 import type { Editable } from './Editor'
+import { DayCalendar } from './DayCalendar'
 
 type Props = {
   data: Data
   date: string
   onDate: (date: string) => void
   onEdit: (rec: Editable) => void
+  onAddAt: (start: string) => void
   onToggleGoal: (goal: Goal) => void
   onToggleTask: (task: Task) => void
 }
 
-export function DayView({ data, date, onDate, onEdit, onToggleGoal, onToggleTask }: Props) {
+export function DayView({ data, date, onDate, onEdit, onAddAt, onToggleGoal, onToggleTask }: Props) {
   const [now, setNow] = useState(nowHHMM)
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
@@ -25,13 +27,16 @@ export function DayView({ data, date, onDate, onEdit, onToggleGoal, onToggleTask
   const isToday = date === todayStr
   const { weekday, date: dateLabel } = formatDay(date)
 
-  const { slots, freeMinutes } = timeline(blocksOn(data, date), awakeHours(data.settings, date))
+  const blocks = blocksOn(data, date)
+  const hours = awakeHours(data.settings, date)
+  const { slots, freeMinutes } = timeline(blocks, hours)
   const goals = goalsOn(data.goals, date)
   const tasks = tasksOn(data.tasks, date, todayStr)
   const maybe = funOn(data.fun, date).filter((f) => !f.start)
 
   const goalDone = (g: Goal) => data.checks.has(checkId(g.id, date))
-  const goalLeft = goals.filter((g) => !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
+  // Goals with a time already have their slot on the calendar, so only anytime ones still need fitting in.
+  const goalLeft = goals.filter((g) => !g.start && !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
   const taskLeft = tasks.filter((t) => !t.doneOn).reduce((n, t) => n + t.minutes, 0)
   const toFit = goalLeft + taskLeft
   const barTotal = Math.max(freeMinutes, toFit, 1)
@@ -79,36 +84,17 @@ export function DayView({ data, date, onDate, onEdit, onToggleGoal, onToggleTask
         </p>
       </section>
 
-      <section>
-        <h3>Schedule</h3>
-        <ol className="timeline">
-          {slots.map((slot) =>
-            slot.type === 'free' ? (
-              <li key={`free-${slot.start}`} className="free">
-                <span>Free</span>
-                <span className="muted small">
-                  {formatTime(slot.start)} – {formatTime(slot.end)} · {formatDuration(slot.minutes)}
-                </span>
-              </li>
-            ) : (
-              <li key={slot.block.rec.id}>
-                <button
-                  className={`card kind-${slot.block.rec.kind}${
-                    isToday && slot.block.start <= now && now < slot.block.end ? ' now' : ''
-                  }`}
-                  onClick={() => onEdit(slot.block.rec)}
-                >
-                  <span className="time">
-                    {formatTime(slot.block.start)}
-                    {slot.block.end > slot.block.start && ` – ${formatTime(slot.block.end)}`}
-                    {isToday && slot.block.start <= now && now < slot.block.end && <span className="now-tag">now</span>}
-                  </span>
-                  <span className="title">{slot.block.rec.title}</span>
-                </button>
-              </li>
-            ),
-          )}
-        </ol>
+      <section aria-labelledby="schedule">
+        <h3 id="schedule">Schedule</h3>
+        <DayCalendar
+          blocks={blocks}
+          free={slots}
+          hours={hours}
+          now={isToday ? now : null}
+          isDone={(rec) => rec.kind === 'goal' && goalDone(rec)}
+          onEdit={onEdit}
+          onAddAt={onAddAt}
+        />
       </section>
 
       {goals.length > 0 && (
@@ -126,7 +112,10 @@ export function DayView({ data, date, onDate, onEdit, onToggleGoal, onToggleTask
                 />
                 <button className="card-body" onClick={() => onEdit(g)}>
                   <span className="title">{g.title}</span>
-                  <span className="meta">{formatDuration(g.minutes)}</span>
+                  <span className="meta">
+                    {formatDuration(g.minutes)}
+                    {g.start && ` · ${formatTime(g.start)}`}
+                  </span>
                 </button>
               </li>
             ))}
