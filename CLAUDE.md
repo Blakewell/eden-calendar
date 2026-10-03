@@ -39,6 +39,11 @@ A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built b
 - GitHub Pages + Actions (free for a public repo) and Supabase **Free plan**. Never upgrade plans, add paid add-ons, or introduce services that bill without asking first.
 - Free projects pause after 7 days idle; that's acceptable.
 
+## Environments
+
+- **There is one hosted database and it's live (Eden's real data).** `npm run dev` always runs in local mode (browser storage) and is the default for development and verification. Use `npm run dev:supabase` (local Supabase in Docker) for sync, auth or migration work. Use `npm run dev:live` only when the user asks; it reads and writes real data.
+- Tests never touch the live database: unit and component tests use an in-memory store, Playwright uses local mode, and pgTAP uses a throwaway database.
+
 ## Workflow
 
 - **Keep `docs/DESIGN.md` up to date.** Any change to what Eden sees, the data, or the architecture updates the design doc (and its change log) in the same pull request.

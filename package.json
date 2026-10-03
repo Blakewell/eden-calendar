@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= vite",
+    "dev:supabase": "scripts/dev-supabase.sh --port 5173 --strictPort",
+    "dev:live": "echo 'Using the LIVE database: changes affect real data.' && vite --port 5173 --strictPort",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",

@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Local Google OAuth credentials for `supabase start` (never commit)
+.env
