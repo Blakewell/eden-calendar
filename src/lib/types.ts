@@ -1,18 +1,88 @@
-export type ScheduleItem = {
+// A fixed block at set times: repeats on chosen weekdays, or happens once on `date`.
+export type Routine = {
+  kind: 'routine'
   id: string
-  date: string // YYYY-MM-DD
-  start: string // HH:MM (24h)
-  end: string | null // HH:MM, optional
   title: string
-  notes: string
-  done: boolean
+  start: string // HH:MM
+  end: string // HH:MM
+  days: number[] // 0 = Sunday … 6 = Saturday; used when date is null
+  date: string | null // YYYY-MM-DD for a one-off block
 }
 
-export type NewItem = Omit<ScheduleItem, 'id' | 'done'>
+// Something to spend a set amount of time on, on chosen days, optionally
+// only between two dates (e.g. a summer reading goal).
+export type Goal = {
+  kind: 'goal'
+  id: string
+  title: string
+  minutes: number
+  days: number[]
+  from: string | null
+  until: string | null
+}
 
-export interface ScheduleStore {
-  list(date: string): Promise<ScheduleItem[]>
-  add(item: NewItem): Promise<ScheduleItem>
-  update(id: string, patch: Partial<Omit<ScheduleItem, 'id'>>): Promise<void>
+// Flexible work (e.g. an assignment) planned for a day, with an estimated
+// time. If it isn't finished, it carries over to today.
+export type Task = {
+  kind: 'task'
+  id: string
+  title: string
+  minutes: number
+  date: string // the day she plans to work on it
+  due: string | null
+  doneOn: string | null
+}
+
+// Something optional and fun on a given day; a time is optional.
+export type Fun = {
+  kind: 'fun'
+  id: string
+  title: string
+  date: string
+  start: string | null
+  end: string | null
+}
+
+// A goal checked off on a given day.
+export type Check = {
+  kind: 'check'
+  id: string // `${goalId}@${date}`
+  goal: string
+  date: string
+}
+
+export type Settings = {
+  kind: 'settings'
+  id: 'settings'
+  // Awake hours, used to count free time. Weekends get their own.
+  dayStart: string // HH:MM
+  dayEnd: string
+  weekendStart: string
+  weekendEnd: string
+}
+
+export type Rec = Routine | Goal | Task | Fun | Check | Settings
+export type Kind = Rec['kind']
+export type EditableKind = 'routine' | 'goal' | 'task' | 'fun'
+
+export interface Store {
+  loadAll(): Promise<Rec[]>
+  put(rec: Rec): Promise<void>
   remove(id: string): Promise<void>
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  kind: 'settings',
+  id: 'settings',
+  dayStart: '06:30',
+  dayEnd: '21:30',
+  weekendStart: '09:00',
+  weekendEnd: '22:30',
+}
+
+export const KIND_LABEL: Record<EditableKind, string> = {
+  routine: 'Routine',
+  goal: 'Daily goal',
+  task: 'Assignment',
+  fun: 'Fun',
 }

@@ -1,27 +1,24 @@
 -- Run this once in Supabase → SQL Editor.
+-- Everything (routines, goals, assignments, fun plans, check-offs, settings) lives in one
+-- table; `data` holds the fields for each kind.
 
-create table if not exists public.schedule_items (
-  id          uuid primary key default gen_random_uuid(),
+create table if not exists public.records (
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  date        date not null,
-  start_time  time not null,
-  end_time    time,
-  title       text not null,
-  notes       text not null default '',
-  done        boolean not null default false,
-  created_at  timestamptz not null default now()
+  id          text not null,
+  kind        text not null check (kind in ('routine', 'goal', 'task', 'fun', 'check', 'settings')),
+  data        jsonb not null default '{}',
+  updated_at  timestamptz not null default now(),
+  primary key (user_id, id)
 );
 
-create index if not exists schedule_items_user_date on public.schedule_items (user_id, date);
+-- Each signed-in person only ever sees and changes their own records.
+alter table public.records enable row level security;
 
--- Each signed-in person only ever sees and changes their own items.
-alter table public.schedule_items enable row level security;
-
-create policy "own items: select" on public.schedule_items
+create policy "own records: select" on public.records
   for select using (auth.uid() = user_id);
-create policy "own items: insert" on public.schedule_items
+create policy "own records: insert" on public.records
   for insert with check (auth.uid() = user_id);
-create policy "own items: update" on public.schedule_items
+create policy "own records: update" on public.records
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "own items: delete" on public.schedule_items
+create policy "own records: delete" on public.records
   for delete using (auth.uid() = user_id);

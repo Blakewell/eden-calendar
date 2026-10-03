@@ -1,15 +1,19 @@
 # Eden's Day
 
-A simple, calm daily schedule for Eden. One day at a time: what's on, what's happening now, and what's done.
+A simple, calm daily schedule for Eden, built for her phone. One day at a time: what's set, what she wants to get done, and how much free time is left.
 
-## Features
+## Four kinds of things, four soft colors
 
-- Today view with a gentle greeting and quick prev / next / today navigation
-- Time blocks with an optional end time and notes
-- Tap the circle to check things off; the current block is softly highlighted
-- Light and dark themes that follow the device
-- Works on phones, tablets and laptops
-- Syncs across devices with Supabase, or runs fully on one device with no setup
+| Kind | Color | What it's for | Example |
+| --- | --- | --- | --- |
+| **Routine** | blue | Fixed blocks that repeat on chosen weekdays (or happen just once) | School, band practice |
+| **Daily goal** | sage | Time to spend on chosen days, optionally between a start and end date | Reading 30 min, clarinet 20 min until Dec 18 |
+| **Assignment** | clay | Flexible work planned for a day, with an estimated time and optional due date. Unfinished ones carry over to today | Science lab write-up, 1h, due Mon |
+| **Fun** | rose | Optional plans for a day, at a time or "sometime" | Friend's house, movie night |
+
+The day view shows routine and timed fun blocks with the **free gaps** between them. It also shows how much goal and assignment time is left against the free time she has.
+
+**My week** holds everything that repeats, plus separate wake and sleep times for weekdays and weekends.
 
 ## Run it
 
@@ -20,16 +24,28 @@ npm run dev
 
 With no configuration the app runs in **local mode**, which saves to the browser it's open in.
 
-## Turn on sync (Supabase)
+## On her phone
 
-1. Create a free project at [supabase.com](https://supabase.com).
+Open the site in Safari (iPhone) or Chrome (Android) and use **Share → Add to Home Screen**. It opens full-screen with its own icon.
+
+## Deploy
+
+Every push to `main` builds and deploys to GitHub Pages ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
+
+GitHub Pages only hosts the app's files, not the data. For data that syncs across devices, use Supabase below.
+
+## Turn on sync (Supabase, free tier)
+
+1. Create a project at [supabase.com](https://supabase.com).
 2. In **SQL Editor**, run [`supabase/schema.sql`](supabase/schema.sql).
-3. In **Authentication → URL Configuration**, add your site URL (e.g. `http://localhost:5173` for development) to the redirect URLs.
-4. Copy `.env.example` to `.env.local` and fill in the project URL and anon key from **Project Settings → API**.
-5. Restart `npm run dev`. Sign in with an email magic link; use the same email on every device.
+3. In **Authentication → URL Configuration**, add the site URLs (the GitHub Pages URL, and `http://localhost:5173` for development) to the redirect URLs.
+4. From **Project Settings → API**, copy the project URL and anon key:
+   - Locally: copy `.env.example` to `.env.local` and fill them in.
+   - For the deployed site: add them as repository **variables** (Settings → Secrets and variables → Actions → Variables) named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then re-run the deploy.
+5. Sign in with an email magic link, using the same email on every device.
 
-Row-level security makes sure each account only sees its own schedule.
+Row-level security makes sure each account only sees its own schedule. The anon key is meant to be public.
 
 ## Tech
 
-Vite · React · TypeScript · Supabase
+Vite · React · TypeScript · Supabase · GitHub Pages

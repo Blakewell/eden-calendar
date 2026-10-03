@@ -1,0 +1,121 @@
+import type { Data } from '../lib/plan'
+import type { Settings } from '../lib/types'
+import { formatDays, formatDuration, formatTime, fromISODate, today } from '../lib/dates'
+import type { Editable } from './Editor'
+
+const shortDate = (s: string) =>
+  fromISODate(s).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+
+type Props = {
+  data: Data
+  onEdit: (rec: Editable) => void
+  onSettings: (s: Settings) => void
+}
+
+export function WeekSetup({ data, onEdit, onSettings }: Props) {
+  const { settings } = data
+  const repeating = data.routines.filter((r) => !r.date)
+  const upcoming = [
+    ...data.routines.filter((r) => r.date && r.date >= today()),
+    ...data.fun.filter((f) => f.date >= today()),
+  ].sort((a, b) => `${a.date}${a.start ?? ''}`.localeCompare(`${b.date}${b.start ?? ''}`))
+
+  return (
+    <>
+      <header className="day-header">
+        <h1>My week</h1>
+        <p className="muted">The things that repeat. Tap anything to change it.</p>
+      </header>
+
+      <section>
+        <h3>Awake hours</h3>
+        <p className="muted small">Free time is counted between these.</p>
+        {(
+          [
+            ['Weekdays', 'dayStart', 'dayEnd'],
+            ['Weekends', 'weekendStart', 'weekendEnd'],
+          ] as const
+        ).map(([label, startKey, endKey]) => (
+          <div key={label}>
+            <h4>{label}</h4>
+            <div className="row">
+              <label>
+                <span>Up at</span>
+                <input
+                  type="time"
+                  value={settings[startKey]}
+                  onChange={(e) => e.target.value && onSettings({ ...settings, [startKey]: e.target.value })}
+                />
+              </label>
+              <label>
+                <span>Bed at</span>
+                <input
+                  type="time"
+                  value={settings[endKey]}
+                  onChange={(e) => e.target.value && onSettings({ ...settings, [endKey]: e.target.value })}
+                />
+              </label>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section>
+        <h3>Routines</h3>
+        {repeating.length === 0 && (
+          <p className="muted small">Nothing yet. Add school, practice, and other set times.</p>
+        )}
+        <ul className="list">
+          {repeating.map((r) => (
+            <li key={r.id}>
+              <button className="card kind-routine" onClick={() => onEdit(r)}>
+                <span className="title">{r.title}</span>
+                <span className="meta">
+                  {formatDays(r.days)} · {formatTime(r.start)} – {formatTime(r.end)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3>Daily goals</h3>
+        {data.goals.length === 0 && <p className="muted small">Nothing yet. Add things like reading or practice.</p>}
+        <ul className="list">
+          {data.goals.map((g) => (
+            <li key={g.id}>
+              <button className="card kind-goal" onClick={() => onEdit(g)}>
+                <span className="title">{g.title}</span>
+                <span className="meta">
+                  {formatDuration(g.minutes)} · {formatDays(g.days)}
+                  {(g.from || g.until) &&
+                    ` · ${g.from ? shortDate(g.from) : 'now'} – ${g.until ? shortDate(g.until) : 'ongoing'}`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {upcoming.length > 0 && (
+        <section>
+          <h3>Coming up</h3>
+          <ul className="list">
+            {upcoming.map((u) => (
+              <li key={u.id}>
+                <button className={`card kind-${u.kind}`} onClick={() => onEdit(u)}>
+                  <span className="title">{u.title}</span>
+                  <span className="meta">
+                    {u.date && shortDate(u.date)}
+                    {u.start && ` · ${formatTime(u.start)}`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  )
+}

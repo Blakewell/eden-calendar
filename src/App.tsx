@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { localStore, supabaseStore } from './lib/store'
-import { DayView } from './components/DayView'
+import { Planner } from './components/Planner'
 import { SignIn } from './components/SignIn'
 
 function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
@@ -23,7 +23,7 @@ function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
   if (!session) return <SignIn db={db} />
 
   return (
-    <DayView
+    <Planner
       store={store}
       footer={
         <>
@@ -39,5 +39,5 @@ function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
 
 export default function App() {
   if (supabase) return <SyncedApp db={supabase} />
-  return <DayView store={localStore} footer="Saved on this device" />
+  return <Planner store={localStore} footer="Saved on this device" />
 }

@@ -1,174 +1,182 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { NewItem, ScheduleItem, ScheduleStore } from '../lib/types'
-import { addDays, formatDay, formatTime, greeting, nowHHMM, today } from '../lib/dates'
-import { ItemEditor } from './ItemEditor'
+import { useEffect, useState } from 'react'
+import type { Data } from '../lib/plan'
+import { awakeHours, blocksOn, checkId, funOn, goalsOn, tasksOn, timeline } from '../lib/plan'
+import type { Goal, Task } from '../lib/types'
+import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
+import type { Editable } from './Editor'
 
 type Props = {
-  store: ScheduleStore
-  footer: React.ReactNode
+  data: Data
+  date: string
+  onDate: (date: string) => void
+  onEdit: (rec: Editable) => void
+  onToggleGoal: (goal: Goal) => void
+  onToggleTask: (task: Task) => void
 }
 
-// The item happening right now: started already, and either hasn't ended or
-// (with no end time) is the latest one that has started.
-function currentId(items: ScheduleItem[], now: string): string | null {
-  let current: ScheduleItem | null = null
-  for (const i of items) {
-    if (i.start <= now && (!i.end || i.end > now)) current = i
-  }
-  return current?.id ?? null
-}
-
-export function DayView({ store, footer }: Props) {
-  const [date, setDate] = useState(today)
-  const [items, setItems] = useState<ScheduleItem[]>([])
-  const [loadedDate, setLoadedDate] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const [editing, setEditing] = useState<ScheduleItem | null>(null)
-  const [editorOpen, setEditorOpen] = useState(false)
+export function DayView({ data, date, onDate, onEdit, onToggleGoal, onToggleTask }: Props) {
   const [now, setNow] = useState(nowHHMM)
-
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
     return () => clearInterval(t)
   }, [])
 
-  const load = useCallback(async () => {
-    try {
-      setItems(await store.list(date))
-      setError('')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load your day.')
-    } finally {
-      setLoadedDate(date)
-    }
-  }, [store, date])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  // Pick up changes made on another device when the tab comes back into view.
-  useEffect(() => {
-    const onFocus = () => document.visibilityState === 'visible' && load()
-    document.addEventListener('visibilitychange', onFocus)
-    return () => document.removeEventListener('visibilitychange', onFocus)
-  }, [load])
-
-  async function run(action: () => Promise<unknown>) {
-    try {
-      await action()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.')
-    }
-    await load()
-  }
-
-  function openNew() {
-    setEditing(null)
-    setEditorOpen(true)
-  }
-
-  function openEdit(item: ScheduleItem) {
-    setEditing(item)
-    setEditorOpen(true)
-  }
-
-  function save(values: NewItem) {
-    setEditorOpen(false)
-    run(() => (editing ? store.update(editing.id, values) : store.add(values)))
-  }
-
-  function remove(id: string) {
-    setEditorOpen(false)
-    run(() => store.remove(id))
-  }
-
-  function toggle(item: ScheduleItem) {
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))
-    run(() => store.update(item.id, { done: !item.done }))
-  }
-
-  const loading = loadedDate !== date
-  const isToday = date === today()
+  const todayStr = today()
+  const isToday = date === todayStr
   const { weekday, date: dateLabel } = formatDay(date)
-  const doneCount = items.filter((i) => i.done).length
-  const nowId = isToday ? currentId(items, now) : null
+
+  const { slots, freeMinutes } = timeline(blocksOn(data, date), awakeHours(data.settings, date))
+  const goals = goalsOn(data.goals, date)
+  const tasks = tasksOn(data.tasks, date, todayStr)
+  const maybe = funOn(data.fun, date).filter((f) => !f.start)
+
+  const goalDone = (g: Goal) => data.checks.has(checkId(g.id, date))
+  const goalLeft = goals.filter((g) => !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
+  const taskLeft = tasks.filter((t) => !t.doneOn).reduce((n, t) => n + t.minutes, 0)
+  const toFit = goalLeft + taskLeft
+  const barTotal = Math.max(freeMinutes, toFit, 1)
 
   return (
-    <main className="page">
+    <>
       <header className="day-header">
         {isToday && <p className="greeting">{greeting()}, Eden</p>}
         <h1>{weekday}</h1>
         <p className="muted">{dateLabel}</p>
 
         <nav className="day-nav" aria-label="Change day">
-          <button className="quiet" onClick={() => setDate(addDays(date, -1))} aria-label="Previous day">
+          <button className="quiet" onClick={() => onDate(addDays(date, -1))} aria-label="Previous day">
             ←
           </button>
-          <button className="quiet" onClick={() => setDate(today())} disabled={isToday}>
+          <button className="quiet" onClick={() => onDate(todayStr)} disabled={isToday}>
             Today
           </button>
-          <button className="quiet" onClick={() => setDate(addDays(date, 1))} aria-label="Next day">
+          <button className="quiet" onClick={() => onDate(addDays(date, 1))} aria-label="Next day">
             →
           </button>
         </nav>
       </header>
 
-      {error && <p className="error">{error}</p>}
-
-      {!loading && items.length > 0 && (
-        <p className="progress muted">
-          {doneCount === items.length ? 'All done. Nice work.' : `${doneCount} of ${items.length} done`}
+      <section className="summary" aria-label="Time today">
+        <div className="bar" aria-hidden="true">
+          <span className="seg kind-goal" style={{ width: `${(goalLeft / barTotal) * 100}%` }} />
+          <span className="seg kind-task" style={{ width: `${(taskLeft / barTotal) * 100}%` }} />
+        </div>
+        <p>
+          <strong>{formatDuration(freeMinutes)}</strong> <span className="muted">free</span>
+          {toFit > 0 && (
+            <>
+              {' · '}
+              <strong>{formatDuration(toFit)}</strong> <span className="muted">to fit in</span>
+            </>
+          )}
         </p>
+        <p className="muted small">
+          {toFit === 0
+            ? 'Nothing left to fit in. Enjoy it.'
+            : toFit <= freeMinutes
+              ? `Fits, with ${formatDuration(freeMinutes - toFit)} to spare.`
+              : `That's ${formatDuration(toFit - freeMinutes)} more than your free time. Maybe move something?`}
+        </p>
+      </section>
+
+      <section>
+        <h3>Schedule</h3>
+        <ol className="timeline">
+          {slots.map((slot) =>
+            slot.type === 'free' ? (
+              <li key={`free-${slot.start}`} className="free">
+                <span>Free</span>
+                <span className="muted small">
+                  {formatTime(slot.start)} – {formatTime(slot.end)} · {formatDuration(slot.minutes)}
+                </span>
+              </li>
+            ) : (
+              <li key={slot.block.rec.id}>
+                <button
+                  className={`card kind-${slot.block.rec.kind}${
+                    isToday && slot.block.start <= now && now < slot.block.end ? ' now' : ''
+                  }`}
+                  onClick={() => onEdit(slot.block.rec)}
+                >
+                  <span className="time">
+                    {formatTime(slot.block.start)}
+                    {slot.block.end > slot.block.start && ` – ${formatTime(slot.block.end)}`}
+                    {isToday && slot.block.start <= now && now < slot.block.end && <span className="now-tag">now</span>}
+                  </span>
+                  <span className="title">{slot.block.rec.title}</span>
+                </button>
+              </li>
+            ),
+          )}
+        </ol>
+      </section>
+
+      {goals.length > 0 && (
+        <section>
+          <h3>Daily goals</h3>
+          <ul className="list">
+            {goals.map((g) => (
+              <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
+                <button
+                  className="check"
+                  role="checkbox"
+                  aria-checked={goalDone(g)}
+                  aria-label={`${g.title} done`}
+                  onClick={() => onToggleGoal(g)}
+                />
+                <button className="card-body" onClick={() => onEdit(g)}>
+                  <span className="title">{g.title}</span>
+                  <span className="meta">{formatDuration(g.minutes)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {!loading && items.length === 0 && (
-        <p className="empty muted">A clear day. Add something when you're ready.</p>
+      {tasks.length > 0 && (
+        <section>
+          <h3>Assignments</h3>
+          <ul className="list">
+            {tasks.map((t) => (
+              <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
+                <button
+                  className="check"
+                  role="checkbox"
+                  aria-checked={!!t.doneOn}
+                  aria-label={`${t.title} done`}
+                  onClick={() => onToggleTask(t)}
+                />
+                <button className="card-body" onClick={() => onEdit(t)}>
+                  <span className="title">{t.title}</span>
+                  <span className="meta">
+                    {formatDuration(t.minutes)}
+                    {!t.doneOn && t.date < date && ' · from earlier'}
+                    {t.due && !t.doneOn && (
+                      <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      <ol className="timeline">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className={`item${item.done ? ' done' : ''}${item.id === nowId ? ' now' : ''}`}
-          >
-            <button
-              className="check"
-              role="checkbox"
-              aria-checked={item.done}
-              aria-label={`Mark ${item.title} ${item.done ? 'not done' : 'done'}`}
-              onClick={() => toggle(item)}
-            />
-            <button className="item-body" onClick={() => openEdit(item)}>
-              <span className="time">
-                {formatTime(item.start)}
-                {item.end && ` – ${formatTime(item.end)}`}
-                {item.id === nowId && <span className="now-tag">now</span>}
-              </span>
-              <span className="title">{item.title}</span>
-              {item.notes && <span className="notes">{item.notes}</span>}
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      <button className="add primary" onClick={openNew}>
-        + Add
-      </button>
-
-      <footer className="muted small">{footer}</footer>
-
-      {editorOpen && (
-        <ItemEditor
-          key={editing?.id ?? 'new'}
-          date={date}
-          item={editing}
-          defaultStart={isToday ? nowHHMM() : '09:00'}
-          onSave={save}
-          onDelete={remove}
-          onClose={() => setEditorOpen(false)}
-        />
+      {maybe.length > 0 && (
+        <section>
+          <h3>Maybe today</h3>
+          <ul className="list">
+            {maybe.map((f) => (
+              <li key={f.id} className="card kind-fun">
+                <button className="card-body" onClick={() => onEdit(f)}>
+                  <span className="title">{f.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
-    </main>
+    </>
   )
 }

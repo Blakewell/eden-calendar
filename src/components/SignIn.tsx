@@ -11,7 +11,7 @@ export function SignIn({ db }: { db: SupabaseClient }) {
     setError('')
     const { error } = await db.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
     })
     if (error) setError(error.message)
     else setSent(true)
