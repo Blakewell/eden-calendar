@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { readTheme, saveTheme, type Theme } from '../lib/theme'
+import type { Profile } from '../lib/profile'
 
 export type View = 'day' | 'goals' | 'week'
 
-export type Account = { email: string | undefined; onSignOut: () => void }
+export type Account = Profile & { onSignOut: () => void }
 
 const THEMES: [Theme, string][] = [
   ['auto', 'Auto'],
@@ -88,7 +89,13 @@ export function Menu({ view, account, onView, onClose }: Props) {
       <div className="menu-account">
         {account ? (
           <>
-            <p className="muted small">Signed in as {account.email}</p>
+            <div className="who">
+              <Avatar account={account} />
+              <span>
+                {account.name && <span className="who-name">{account.name}</span>}
+                <span className="muted small">Signed in as {account.email}</span>
+              </span>
+            </div>
             <button className="quiet" onClick={account.onSignOut}>
               Sign out
             </button>
@@ -98,5 +105,27 @@ export function Menu({ view, account, onView, onClose }: Props) {
         )}
       </div>
     </dialog>
+  )
+}
+
+// Their Google photo, or their initial if there isn't one (or it won't load).
+function Avatar({ account }: { account: Account }) {
+  const [broken, setBroken] = useState(false)
+  const initial = (account.name ?? account.email ?? '?').charAt(0).toUpperCase()
+  if (!account.avatarUrl || broken)
+    return (
+      <span className="avatar" aria-hidden="true">
+        {initial}
+      </span>
+    )
+  return (
+    <img
+      className="avatar"
+      src={account.avatarUrl}
+      alt=""
+      // Google's photo links refuse requests that send a referrer.
+      referrerPolicy="no-referrer"
+      onError={() => setBroken(true)}
+    />
   )
 }

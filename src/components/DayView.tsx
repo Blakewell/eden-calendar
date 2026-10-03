@@ -20,6 +20,7 @@ import { DayCalendar } from './DayCalendar'
 type Props = {
   data: Data
   date: string
+  name: string | null // first name of whoever's signed in, for the greeting
   onDate: (date: string) => void
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
@@ -28,7 +29,7 @@ type Props = {
   onToggleTask: (task: Task) => void
 }
 
-export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleGoal, onToggleTask }: Props) {
+export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onToggleGoal, onToggleTask }: Props) {
   const [now, setNow] = useState(nowHHMM)
   // A short line after tapping Schedule: where it went, or that nothing fits.
   const [note, setNote] = useState<{ text: string; date: string } | null>(null)
@@ -70,7 +71,12 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
   return (
     <>
       <header className="day-header">
-        {isToday && <p className="greeting">{greeting()}, Eden</p>}
+        {isToday && (
+          <p className="greeting">
+            {greeting()}
+            {name && `, ${name}`}
+          </p>
+        )}
         <h1>{weekday}</h1>
         <p className="muted">{dateLabel}</p>
 

@@ -1,6 +1,6 @@
 # Eden's Day
 
-A simple, calm daily schedule for Eden, built for her phone. One day at a time: what's set, what she wants to get done, and how much free time is left.
+A simple, calm daily schedule for the family, designed first for Eden and built for the phone. Everyone signs in with Google and gets their own schedule. One day at a time: what's set, what she wants to get done, and how much free time is left.
 
 ## Four kinds of things, four soft colors
 
@@ -106,7 +106,7 @@ Local Studio (at http://127.0.0.1:54323) shows the local data.
 
 ### Live (`npm run dev:live`)
 
-`.env.local` (git-ignored) holds the live `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Only `npm run dev:live` reads it. Sign-in is Google only (email sign-in is turned off), limited to the test users on the Google OAuth consent screen. Each account only sees its own schedule (row-level security).
+`.env.local` (git-ignored) holds the live `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Only `npm run dev:live` reads it. Sign-in is Google only (email sign-in is turned off), limited to the test users on the Google OAuth consent screen and the database allowlist (add people to both). Each account only sees its own schedule (row-level security).
 
 ## Tech
 

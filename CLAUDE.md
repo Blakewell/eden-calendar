@@ -1,6 +1,6 @@
 # Eden's Day: project instructions
 
-A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built by her dad (Blake). The README covers features and setup, `docs/DESIGN.md` covers how the app works, and this file is the working agreement for changes.
+A daily schedule web app built by Blake for his family, designed first for Eden (a teen) and used mainly **on a phone**. Each family member signs in with Google and has their own schedule; the app greets whoever is signed in by their Google first name. The README covers features and setup, `docs/DESIGN.md` covers how the app works, and this file is the working agreement for changes.
 
 ## Product principles
 
@@ -29,8 +29,8 @@ A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built b
 ## Security and access
 
 - **Google sign-in only.** Email sign-in is turned off (`[auth.email] enable_signup = false`). Don't add other providers without asking. Apple needs a paid developer account.
-- **Invite-only:** only `blakewell@gmail.com` and `eden.g.blackwell@gmail.com`.
-  - Gate 1: the Google OAuth app stays in **Testing** mode with those two as test users.
+- **Invite-only:** a small family allowlist. The addresses live only in the database and the Google console, never in this repo.
+  - Gate 1: the Google OAuth app stays in **Testing** mode with each family member as a test user.
   - Gate 2: the `before_user_created` auth hook checks `private.allowed_emails`.
 - **Never commit emails, keys, tokens or passwords** to this public repo. Allowlist entries are added directly in the database (`supabase db query --linked`). The Supabase publishable key and Google client ID are public by design and live in GitHub repo **variables**. Secrets (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `GOOGLE_CLIENT_SECRET`) live in repo **secrets**, and the user sets them with `gh secret set`, never through chat.
 - Every table gets RLS and explicit grants (this project doesn't auto-grant to `authenticated`). Signed-out (`anon`) gets no table access.

@@ -76,6 +76,7 @@ export function Planner({ store, account }: { store: Store; account?: Account })
           <DayView
             data={data}
             date={date}
+            name={account?.firstName ?? null}
             onDate={setDate}
             onEdit={(record) => setEditor({ record })}
             onAddAt={(start) => setEditor({ record: null, start })}
