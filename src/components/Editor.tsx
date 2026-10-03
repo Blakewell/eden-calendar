@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { EditableKind, Fun, Goal, Routine, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
-import { weekday } from '../lib/dates'
+import { formatDuration, formatTime, weekday } from '../lib/dates'
 import { CHUNK } from '../lib/plan'
 import { DayPicker } from './DayPicker'
 import { Stepper } from './Stepper'
@@ -13,6 +13,12 @@ type Props = {
   defaultStart: string
   record: Editable | null // null = adding something new
   newKind?: EditableKind // when adding, skip the "what kind" step
+  // Adding at a tapped time: the day's unscheduled goals and assignments to put there instead.
+  candidates?: (Goal | Task)[]
+  onPlace?: (rec: Goal | Task) => void
+  // Set when this goal or assignment is on the calendar for `date` only; takes it back off.
+  unscheduleLabel?: string
+  onUnschedule?: () => void
   onSave: (rec: Editable) => void
   onDelete: (id: string) => void
   onClose: () => void
@@ -34,7 +40,19 @@ const HINT: Record<EditableKind, string> = {
   fun: "Optional plans, like a friend's house",
 }
 
-export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, onClose }: Props) {
+export function Editor({
+  date,
+  defaultStart,
+  record,
+  newKind,
+  candidates = [],
+  onPlace,
+  unscheduleLabel,
+  onUnschedule,
+  onSave,
+  onDelete,
+  onClose,
+}: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [kind, setKind] = useState<EditableKind | null>(record?.kind ?? newKind ?? null)
 
@@ -113,6 +131,8 @@ export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, 
         date: workOn,
         due: due || null,
         doneOn: record?.kind === 'task' ? record.doneOn : null,
+        // Keep its spot on the calendar unless it's now planned for another day.
+        at: record?.kind === 'task' && record.at?.date === workOn ? record.at : null,
       })
     }
   }
@@ -121,7 +141,25 @@ export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, 
     <dialog ref={dialog} className={`editor${kind ? ` kind-${kind}` : ''}`} onClose={onClose}>
       {!kind ? (
         <div>
-          <h2>Add to your week</h2>
+          {candidates.length > 0 && onPlace && (
+            <>
+              <h2>Fit something in at {formatTime(defaultStart)}</h2>
+              <div className="kind-choices">
+                {candidates.map((c) => (
+                  <button key={c.id} type="button" className={`kind-choice kind-${c.kind}`} onClick={() => onPlace(c)}>
+                    <span className="dot" />
+                    <span>
+                      <strong>{c.title}</strong>
+                      <span className="muted small">
+                        {KIND_LABEL[c.kind]} · {formatDuration(c.minutes)}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <h2>{candidates.length > 0 && onPlace ? 'Or add something new' : 'Add to your week'}</h2>
           <div className="kind-choices">
             {(['routine', 'goal', 'task', 'fun'] as const).map((k) => (
               <button key={k} type="button" className={`kind-choice kind-${k}`} onClick={() => choose(k)}>
@@ -303,6 +341,12 @@ export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, 
                 <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
               </label>
             </div>
+          )}
+
+          {onUnschedule && (
+            <button type="button" className="link unschedule" onClick={onUnschedule}>
+              {unscheduleLabel}
+            </button>
           )}
 
           <div className="actions">

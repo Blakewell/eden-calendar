@@ -18,7 +18,8 @@ export type Goal = {
   title: string
   minutes: number
   start: string | null // HH:MM; older goals saved before this field have none
-  moved: Record<string, string> // date -> HH:MM for days it was dragged somewhere else
+  // date -> HH:MM: where it goes that day instead (dragged, or an anytime goal scheduled for that day)
+  moved: Record<string, string>
   days: number[]
   from: string | null
   until: string | null
@@ -34,6 +35,7 @@ export type Task = {
   date: string // the day she plans to work on it
   due: string | null
   doneOn: string | null
+  at: { date: string; start: string } | null // scheduled on the calendar for one day
 }
 
 // Something optional and fun on a given day; a time is optional.

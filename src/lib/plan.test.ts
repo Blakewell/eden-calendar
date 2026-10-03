@@ -4,6 +4,7 @@ import {
   blocksOn,
   calendarRange,
   checkId,
+  findSlot,
   goalStartOn,
   goalStatus,
   goalsOn,
@@ -15,6 +16,7 @@ import {
   split,
   tasksOn,
   timeline,
+  unschedule,
   type Block,
 } from './plan'
 import { DEFAULT_SETTINGS, type Settings } from './types'
@@ -158,27 +160,27 @@ describe('blocksOn', () => {
       fun({ title: "Maya's", start: '14:00', end: '17:00' }),
       fun({ title: 'Movie?' }),
     ])
-    expect(blocksOn(data, SAT).map((b) => b.rec.title)).toEqual(['Soccer', "Maya's"])
+    expect(blocksOn(data, SAT, SAT).map((b) => b.rec.title)).toEqual(['Soccer', "Maya's"])
   })
 
   it('puts goals with a start time on the calendar for their length', () => {
     const data = split([goal({ title: 'Piano', start: '16:00', minutes: 40 }), goal({ title: 'Reading' })])
-    expect(blocksOn(data, SAT)).toEqual([expect.objectContaining({ start: '16:00', end: '16:40' })])
+    expect(blocksOn(data, SAT, SAT)).toEqual([expect.objectContaining({ start: '16:00', end: '16:40' })])
   })
 
   it('leaves a goal off the calendar on days it does not apply', () => {
     const data = split([goal({ start: '16:00', days: [1, 2, 3, 4, 5] })])
-    expect(blocksOn(data, SAT)).toEqual([])
+    expect(blocksOn(data, SAT, SAT)).toEqual([])
   })
 
   it('stops a late goal at midnight', () => {
     const data = split([goal({ start: '23:30', minutes: 60 })])
-    expect(blocksOn(data, SAT)[0]).toMatchObject({ end: '24:00' })
+    expect(blocksOn(data, SAT, SAT)[0]).toMatchObject({ end: '24:00' })
   })
 
   it('gives a fun block with no end time zero length', () => {
     const data = split([fun({ start: '14:00', end: null })])
-    expect(blocksOn(data, SAT)[0]).toMatchObject({ start: '14:00', end: '14:00' })
+    expect(blocksOn(data, SAT, SAT)[0]).toMatchObject({ start: '14:00', end: '14:00' })
   })
 })
 
@@ -205,8 +207,8 @@ describe('moving things on the calendar', () => {
     expect(goalStartOn(moved, SUN)).toBe('16:00')
 
     const data = split([moved])
-    expect(blocksOn(data, SAT)[0]).toMatchObject({ start: '19:10', end: '19:50' })
-    expect(blocksOn(data, SUN)[0]).toMatchObject({ start: '16:00' })
+    expect(blocksOn(data, SAT, SAT)[0]).toMatchObject({ start: '19:10', end: '19:50' })
+    expect(blocksOn(data, SUN, SAT)[0]).toMatchObject({ start: '16:00' })
   })
 
   it('clears the exception when a goal is moved back to its usual time', () => {
@@ -219,8 +221,56 @@ describe('moving things on the calendar', () => {
     expect(moveTo(piano, SAT, '19:00', SAT)).toMatchObject({ moved: { [MON]: '17:00', [SAT]: '19:00' } })
   })
 
-  it('ignores a move on an anytime goal', () => {
-    expect(goalStartOn(goal({ start: null, moved: { [SAT]: '10:00' } }), SAT)).toBeNull()
+  it('puts an anytime goal on the calendar only on the day it was scheduled', () => {
+    const reading = goal({ start: null, moved: { [SAT]: '10:00' } })
+    expect(goalStartOn(reading, SAT)).toBe('10:00')
+    expect(goalStartOn(reading, SUN)).toBeNull()
+  })
+})
+
+describe('scheduling goals and assignments', () => {
+  it('schedules an assignment on the calendar for one day', () => {
+    const lab = moveTo(task({ title: 'Lab', minutes: 50, date: SAT }), SAT, '14:00', SAT)
+    expect(lab.at).toEqual({ date: SAT, start: '14:00' })
+    expect(blocksOn(split([lab]), SAT, SAT)).toEqual([expect.objectContaining({ start: '14:00', end: '14:50' })])
+  })
+
+  it('shows a carried-over assignment scheduled today, but not on the earlier day', () => {
+    const late = moveTo(task({ date: FRI }), SAT, '15:00', SAT)
+    expect(blocksOn(split([late]), SAT, SAT)).toHaveLength(1)
+    expect(blocksOn(split([late]), FRI, SAT)).toHaveLength(0)
+  })
+
+  it('unschedules: anytime goals and assignments go back to the checklist, timed goals to their usual time', () => {
+    const reading = goal({ start: null, moved: { [SAT]: '10:00', [MON]: '11:00' } })
+    expect(unschedule(reading, SAT, SAT).moved).toEqual({ [MON]: '11:00' })
+    expect(unschedule(task({ at: { date: SAT, start: '14:00' } }), SAT, SAT).at).toBeNull()
+    const piano = goal({ start: '16:00', moved: { [SAT]: '19:00' } })
+    expect(goalStartOn(unschedule(piano, SAT, SAT), SAT)).toBe('16:00')
+  })
+
+  it('reads assignments saved before scheduling existed as unscheduled', () => {
+    const { at: _, ...old } = task()
+    expect(split([old as never]).tasks[0].at).toBeNull()
+  })
+})
+
+describe('findSlot', () => {
+  const hours: [string, string] = ['09:00', '21:00']
+
+  it('finds the first free gap long enough, on a 10-minute mark', () => {
+    const blocks = [block('09:00', '10:00'), block('10:20', '12:00')]
+    expect(findSlot(blocks, hours, 30, '09:00')).toBe('12:00') // the 20-minute gap is too short
+    expect(findSlot(blocks, hours, 20, '09:00')).toBe('10:00')
+  })
+
+  it('starts no earlier than now, rounded up to the next 10 minutes', () => {
+    expect(findSlot([], hours, 30, '13:12')).toBe('13:20')
+  })
+
+  it('returns null when nothing fits before bedtime', () => {
+    expect(findSlot([block('09:00', '20:40')], hours, 30, '09:00')).toBeNull()
+    expect(findSlot([], hours, 30, '20:50')).toBeNull()
   })
 })
 

@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
-import type { Data } from '../lib/plan'
-import { awakeHours, blocksOn, checkId, funOn, goalStartOn, goalsOn, tasksOn, timeline } from '../lib/plan'
-import type { Fun, Goal, Task } from '../lib/types'
+import type { Data, Movable } from '../lib/plan'
+import {
+  awakeHours,
+  blocksOn,
+  checkId,
+  findSlot,
+  funOn,
+  goalStartOn,
+  goalsOn,
+  taskStartOn,
+  tasksOn,
+  timeline,
+} from '../lib/plan'
+import type { Goal, Task } from '../lib/types'
 import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
 import type { Editable } from './Editor'
 import { DayCalendar } from './DayCalendar'
@@ -12,13 +23,15 @@ type Props = {
   onDate: (date: string) => void
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
-  onMove: (rec: Goal | Fun, start: string) => void
+  onMove: (rec: Movable, start: string) => void
   onToggleGoal: (goal: Goal) => void
   onToggleTask: (task: Task) => void
 }
 
 export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleGoal, onToggleTask }: Props) {
   const [now, setNow] = useState(nowHHMM)
+  // A short line after tapping Schedule: where it went, or that nothing fits.
+  const [note, setNote] = useState<{ text: string; date: string } | null>(null)
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
     return () => clearInterval(t)
@@ -28,7 +41,7 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
   const isToday = date === todayStr
   const { weekday, date: dateLabel } = formatDay(date)
 
-  const blocks = blocksOn(data, date)
+  const blocks = blocksOn(data, date, todayStr)
   const hours = awakeHours(data.settings, date)
   const { slots, freeMinutes } = timeline(blocks, hours)
   const goals = goalsOn(data.goals, date)
@@ -36,9 +49,21 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
   const maybe = funOn(data.fun, date).filter((f) => !f.start)
 
   const goalDone = (g: Goal) => data.checks.has(checkId(g.id, date))
-  // Goals with a time already have their slot on the calendar, so only anytime ones still need fitting in.
-  const goalLeft = goals.filter((g) => !g.start && !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
-  const taskLeft = tasks.filter((t) => !t.doneOn).reduce((n, t) => n + t.minutes, 0)
+  // Anything with a slot on the calendar is already fitted in.
+  const goalLeft = goals.filter((g) => !goalStartOn(g, date) && !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
+  const taskLeft = tasks.filter((t) => !t.doneOn && !taskStartOn(t, date)).reduce((n, t) => n + t.minutes, 0)
+
+  // One tap: put it in the next free gap that fits (from now, when it's today).
+  function schedule(rec: Goal | Task) {
+    const start = findSlot(blocks, hours, rec.minutes, isToday ? now : '00:00')
+    if (start) onMove(rec, start)
+    setNote({
+      date,
+      text: start
+        ? `${rec.title} is on at ${formatTime(start)}. Drag it to move it.`
+        : `No free gap long enough for ${rec.title}${isToday ? ' left today' : ''}. Tap a spot on the calendar to put it there anyway.`,
+    })
+  }
   const toFit = goalLeft + taskLeft
   const barTotal = Math.max(freeMinutes, toFit, 1)
 
@@ -95,12 +120,18 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
           free={slots}
           hours={hours}
           now={isToday ? now : null}
-          isDone={(rec) => rec.kind === 'goal' && goalDone(rec)}
+          isDone={(rec) => (rec.kind === 'goal' && goalDone(rec)) || (rec.kind === 'task' && !!rec.doneOn)}
           onEdit={onEdit}
           onAddAt={onAddAt}
           onMove={onMove}
         />
       </section>
+
+      {note?.date === date && (
+        <p className="note muted small" role="status">
+          {note.text}
+        </p>
+      )}
 
       {goals.length > 0 && (
         <section>
@@ -119,9 +150,10 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
                   <span className="title">{g.title}</span>
                   <span className="meta">
                     {formatDuration(g.minutes)}
-                    {g.start && ` · ${formatTime(goalStartOn(g, date)!)}`}
+                    {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
                   </span>
                 </button>
+                {!goalStartOn(g, date) && !goalDone(g) && <ScheduleButton rec={g} onSchedule={schedule} />}
               </li>
             ))}
           </ul>
@@ -145,12 +177,14 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
                   <span className="title">{t.title}</span>
                   <span className="meta">
                     {formatDuration(t.minutes)}
+                    {taskStartOn(t, date) && ` · ${formatTime(taskStartOn(t, date)!)}`}
                     {!t.doneOn && t.date < date && ' · from earlier'}
                     {t.due && !t.doneOn && (
                       <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
                     )}
                   </span>
                 </button>
+                {!taskStartOn(t, date) && !t.doneOn && <ScheduleButton rec={t} onSchedule={schedule} />}
               </li>
             ))}
           </ul>
@@ -172,5 +206,13 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleG
         </section>
       )}
     </>
+  )
+}
+
+function ScheduleButton({ rec, onSchedule }: { rec: Goal | Task; onSchedule: (rec: Goal | Task) => void }) {
+  return (
+    <button className="quiet schedule" aria-label={`Schedule ${rec.title}`} onClick={() => onSchedule(rec)}>
+      Schedule
+    </button>
   )
 }

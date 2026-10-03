@@ -521,6 +521,18 @@ button.card {
   font-size: 0.75rem;
 }
 
+.schedule {
+  flex: none;
+  min-height: 2.5rem;
+  font-size: 0.85rem;
+  color: var(--c);
+  border-color: var(--c);
+}
+
+.note {
+  margin: -1rem 0 1.5rem;
+}
+
 .hint {
   margin: -0.4rem 0 0.75rem;
 }
@@ -806,6 +818,12 @@ textarea {
 
 .kind-choice strong {
   font-weight: 500;
+}
+
+.unschedule {
+  display: block;
+  min-height: 2.5rem;
+  margin: -0.25rem 0 0.5rem;
 }
 
 .kind-choice .dot {
