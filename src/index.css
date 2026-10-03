@@ -34,8 +34,9 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Dark: follows the phone unless the menu's Appearance setting picks one (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #1c211f;
     --surface: #252b28;
     --ink: #e7e9e4;
@@ -56,6 +57,32 @@
     --fun-soft: #3a2a31;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #1c211f;
+  --surface: #252b28;
+  --ink: #e7e9e4;
+  --muted: #949b96;
+  --line: #333b37;
+  --line-faint: #2a302d;
+  --accent: #8db89c;
+  --danger: #d89a90;
+  --shadow: none;
+
+  --routine: #92acd0;
+  --routine-soft: #263040;
+  --goal: #8db89c;
+  --goal-soft: #26342c;
+  --task: #d6a77d;
+  --task-soft: #3a3027;
+  --fun: #d79bb3;
+  --fun-soft: #3a2a31;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 .kind-routine {
@@ -456,6 +483,26 @@ button.card {
   line-height: 1.25;
 }
 
+/* Goals and fun can be dragged; routines are fixed. */
+.blocks .card.movable {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+
+.blocks li.dragging {
+  z-index: 2;
+}
+
+.blocks li.dragging .card {
+  cursor: grabbing;
+  background: var(--c-soft);
+  border-color: var(--c);
+  box-shadow: 0 8px 24px rgb(47 58 53 / 0.18);
+  transform: scale(1.02);
+}
+
 .blocks .card.short {
   flex-direction: row;
   align-items: center;
@@ -472,6 +519,10 @@ button.card {
 
 .blocks .card.short .time {
   font-size: 0.75rem;
+}
+
+.hint {
+  margin: -0.4rem 0 0.75rem;
 }
 
 .now-line {
@@ -545,6 +596,25 @@ button.card {
 
 .menu-item[aria-current='page'] > span:first-child {
   font-weight: 600;
+}
+
+.menu-theme {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.9rem 1rem 0.3rem;
+  border-top: 1px solid var(--line);
+}
+
+.menu-theme .segmented {
+  display: flex;
+  align-self: stretch;
+}
+
+.menu-theme .segmented button {
+  flex: 1;
+  min-height: 2.5rem;
 }
 
 .menu-account {

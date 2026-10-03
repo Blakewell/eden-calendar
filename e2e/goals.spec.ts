@@ -84,3 +84,26 @@ test('menu has no sign out in local mode, and fits the phone screen', async ({ p
   // No sideways scrolling at 375px.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
 })
+
+test('appearance: pick dark or light in the menu, and it sticks after a reload', async ({ page }) => {
+  const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  const LIGHT = 'rgb(246, 244, 239)'
+  const DARK = 'rgb(28, 33, 31)'
+  const choose = async (name: string) => {
+    await page.getByRole('button', { name: 'Menu' }).click()
+    await page.getByRole('radiogroup', { name: 'Appearance' }).getByRole('radio', { name }).click()
+    await page.keyboard.press('Escape')
+  }
+
+  await choose('Dark')
+  expect(await background()).toBe(DARK)
+  await choose('Light')
+  expect(await background()).toBe(LIGHT)
+  await page.reload()
+  expect(await background()).toBe(LIGHT)
+
+  // Auto follows the phone, which differs per test project.
+  await choose('Auto')
+  const scheme = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)
+  expect(await background()).toBe(scheme ? DARK : LIGHT)
+})

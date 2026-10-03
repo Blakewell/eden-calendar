@@ -11,9 +11,9 @@ A simple, calm daily schedule for Eden, built for her phone. One day at a time: 
 | **Assignment** | clay | Flexible work planned for a day, with an estimated time and optional due date. Unfinished ones carry over to today | Science lab write-up, 1h, due Mon |
 | **Fun** | rose | Optional plans for a day, at a time or "sometime" | Friend's house, movie night |
 
-The day view is a calendar in **10-minute chunks** showing routines, timed fun and timed goals, with the **free gaps** between them. Tap an empty spot to add something there. It also shows how much goal and assignment time is left against the free time she has.
+The day view is a calendar in **10-minute chunks** showing routines, timed fun and timed goals, with the **free gaps** between them. Tap an empty spot to add something there, or hold and drag a goal or fun plan to move it (routines stay put; a goal moves for that day only). It also shows how much goal and assignment time is left against the free time she has.
 
-The **menu** (☰) moves between **Today**, **Daily goals** (add, change and remove goals) and **My week** (routines and separate wake and sleep times for weekdays and weekends), and has **Sign out**.
+The **menu** (☰) moves between **Today**, **Daily goals** (add, change and remove goals) and **My week** (routines and separate wake and sleep times for weekdays and weekends), and has **Appearance** (Auto / Light / Dark) and **Sign out**.
 
 How it all works is in [docs/DESIGN.md](docs/DESIGN.md).
 

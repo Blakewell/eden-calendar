@@ -18,6 +18,7 @@ export type Goal = {
   title: string
   minutes: number
   start: string | null // HH:MM; older goals saved before this field have none
+  moved: Record<string, string> // date -> HH:MM for days it was dragged somewhere else
   days: number[]
   from: string | null
   until: string | null
