@@ -34,11 +34,12 @@ type Props = {
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
   onMove: (rec: Movable, start: string) => void
+  readOnly?: boolean // a day shared with you: nothing to tap, drag or add
 }
 
 // The day as a calendar: hours down the side, each split into 10-minute
 // chunks, with blocks placed at their real times and free gaps labelled.
-export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt, onMove }: Props) {
+export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt, onMove, readOnly = false }: Props) {
   const grid = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
   const lastDragEnd = useRef(-Infinity)
@@ -62,7 +63,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
   }
 
   function startGesture(e: PointerEvent<HTMLButtonElement>, block: Block) {
-    if (!isMovable(block.rec) || e.button !== 0) return
+    if (readOnly || !isMovable(block.rec) || e.button !== 0) return
     const start = toMinutes(block.start)
     const g: Gesture = {
       rec: block.rec,
@@ -110,7 +111,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
 
   // A drag ends with a click on the block; that shouldn't open the editor.
   function tap(rec: Editable) {
-    if (performance.now() - lastDragEnd.current > 400) onEdit(rec)
+    if (!readOnly && performance.now() - lastDragEnd.current > 400) onEdit(rec)
   }
 
   const [from, to] = calendarRange(blocks, hours)
@@ -120,7 +121,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
 
   // Tapping an empty chunk adds something starting there.
   function addHere(e: MouseEvent<HTMLDivElement>) {
-    if (e.target !== e.currentTarget) return
+    if (readOnly || e.target !== e.currentTarget) return
     const offset = e.clientY - e.currentTarget.getBoundingClientRect().top
     onAddAt(fromMinutes(from + Math.floor(offset / CHUNK_PX) * CHUNK))
   }
@@ -137,7 +138,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
         ))}
       </ol>
 
-      <div ref={grid} className="grid" style={{ height: y(to) }} onClick={addHere}>
+      <div ref={grid} className={`grid${readOnly ? ' read-only' : ''}`} style={{ height: y(to) }} onClick={addHere}>
         {free.map(
           (slot) =>
             slot.type === 'free' &&
@@ -158,7 +159,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
             const start = toMinutes(block.start) + (dragging ? drag.shift : 0)
             const shownStart = fromMinutes(start)
             const shownEnd = fromMinutes(toMinutes(block.end) + (dragging ? drag.shift : 0))
-            const movable = isMovable(block.rec)
+            const movable = !readOnly && isMovable(block.rec)
             const length = Math.max(toMinutes(shownEnd) - start, MIN_BLOCK)
             const isNow = !dragging && nowMin !== null && start <= nowMin && nowMin < toMinutes(shownEnd)
             const short = length < 40
@@ -177,6 +178,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
                   className={`card kind-${block.rec.kind}${isNow ? ' now' : ''}${short ? ' short' : ''}${
                     isDone(block.rec) ? ' done' : ''
                   }${movable ? ' movable' : ''}`}
+                  aria-disabled={readOnly || undefined}
                   onClick={() => tap(block.rec)}
                   onPointerDown={(e) => startGesture(e, block)}
                   onPointerMove={moveGesture}

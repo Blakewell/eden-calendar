@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Data, Movable } from '../lib/plan'
 import {
   awakeHours,
@@ -21,6 +21,7 @@ type Props = {
   data: Data
   date: string
   name: string | null // first name of whoever's signed in, for the greeting
+  owner?: string | null // set when viewing someone else's shared day (view only)
   onDate: (date: string) => void
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
@@ -29,7 +30,18 @@ type Props = {
   onToggleTask: (task: Task) => void
 }
 
-export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onToggleGoal, onToggleTask }: Props) {
+export function DayView({
+  data,
+  date,
+  name,
+  owner = null,
+  onDate,
+  onEdit,
+  onAddAt,
+  onMove,
+  onToggleGoal,
+  onToggleTask,
+}: Props) {
   const [now, setNow] = useState(nowHHMM)
   // A short line after tapping Schedule: where it went, or that nothing fits.
   const [note, setNote] = useState<{ text: string; date: string } | null>(null)
@@ -38,6 +50,7 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
     return () => clearInterval(t)
   }, [])
 
+  const readOnly = owner !== null
   const todayStr = today()
   const isToday = date === todayStr
   const { weekday, date: dateLabel } = formatDay(date)
@@ -71,11 +84,15 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
   return (
     <>
       <header className="day-header">
-        {isToday && (
-          <p className="greeting">
-            {greeting()}
-            {name && `, ${name}`}
-          </p>
+        {readOnly ? (
+          <p className="greeting">{owner}'s day</p>
+        ) : (
+          isToday && (
+            <p className="greeting">
+              {greeting()}
+              {name && `, ${name}`}
+            </p>
+          )
         )}
         <h1>{weekday}</h1>
         <p className="muted">{dateLabel}</p>
@@ -118,7 +135,7 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
 
       <section aria-labelledby="schedule">
         <h3 id="schedule">Schedule</h3>
-        {blocks.some((b) => b.rec.kind !== 'routine') && (
+        {!readOnly && blocks.some((b) => b.rec.kind !== 'routine') && (
           <p className="muted small hint">Hold and drag a goal or fun plan to move it.</p>
         )}
         <DayCalendar
@@ -130,6 +147,7 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
           onEdit={onEdit}
           onAddAt={onAddAt}
           onMove={onMove}
+          readOnly={readOnly}
         />
       </section>
 
@@ -150,16 +168,17 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
                   role="checkbox"
                   aria-checked={goalDone(g)}
                   aria-label={`${g.title} done`}
-                  onClick={() => onToggleGoal(g)}
+                  aria-disabled={readOnly || undefined}
+                  onClick={() => !readOnly && onToggleGoal(g)}
                 />
-                <button className="card-body" onClick={() => onEdit(g)}>
+                <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
                   <span className="title">{g.title}</span>
                   <span className="meta">
                     {formatDuration(g.minutes)}
                     {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
                   </span>
-                </button>
-                {!goalStartOn(g, date) && !goalDone(g) && <ScheduleButton rec={g} onSchedule={schedule} />}
+                </CardBody>
+                {!readOnly && !goalStartOn(g, date) && !goalDone(g) && <ScheduleButton rec={g} onSchedule={schedule} />}
               </li>
             ))}
           </ul>
@@ -177,9 +196,10 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
                   role="checkbox"
                   aria-checked={!!t.doneOn}
                   aria-label={`${t.title} done`}
-                  onClick={() => onToggleTask(t)}
+                  aria-disabled={readOnly || undefined}
+                  onClick={() => !readOnly && onToggleTask(t)}
                 />
-                <button className="card-body" onClick={() => onEdit(t)}>
+                <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
                   <span className="title">{t.title}</span>
                   <span className="meta">
                     {formatDuration(t.minutes)}
@@ -189,8 +209,8 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
                       <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
                     )}
                   </span>
-                </button>
-                {!taskStartOn(t, date) && !t.doneOn && <ScheduleButton rec={t} onSchedule={schedule} />}
+                </CardBody>
+                {!readOnly && !taskStartOn(t, date) && !t.doneOn && <ScheduleButton rec={t} onSchedule={schedule} />}
               </li>
             ))}
           </ul>
@@ -203,9 +223,9 @@ export function DayView({ data, date, name, onDate, onEdit, onAddAt, onMove, onT
           <ul className="list">
             {maybe.map((f) => (
               <li key={f.id} className="card kind-fun">
-                <button className="card-body" onClick={() => onEdit(f)}>
+                <CardBody readOnly={readOnly} onClick={() => onEdit(f)}>
                   <span className="title">{f.title}</span>
-                </button>
+                </CardBody>
               </li>
             ))}
           </ul>
@@ -219,6 +239,16 @@ function ScheduleButton({ rec, onSchedule }: { rec: Goal | Task; onSchedule: (re
   return (
     <button className="quiet schedule" aria-label={`Schedule ${rec.title}`} onClick={() => onSchedule(rec)}>
       Schedule
+    </button>
+  )
+}
+
+// A card's text: tappable to edit, or plain on a day shared with you.
+function CardBody({ readOnly, onClick, children }: { readOnly: boolean; onClick: () => void; children: ReactNode }) {
+  if (readOnly) return <span className="card-body">{children}</span>
+  return (
+    <button className="card-body" onClick={onClick}>
+      {children}
     </button>
   )
 }

@@ -10,9 +10,10 @@ type Props = {
   data: Data
   onEdit: (rec: Editable) => void
   onSettings: (s: Settings) => void
+  readOnly?: boolean // someone else's week, shared with you
 }
 
-export function WeekSetup({ data, onEdit, onSettings }: Props) {
+export function WeekSetup({ data, onEdit, onSettings, readOnly = false }: Props) {
   const { settings } = data
   const repeating = data.routines.filter((r) => !r.date)
   const upcoming = [
@@ -24,7 +25,9 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
     <>
       <header className="day-header">
         <h1>My week</h1>
-        <p className="muted">Your set times and awake hours. Tap anything to change it.</p>
+        <p className="muted">
+          {readOnly ? 'Their set times and awake hours.' : 'Your set times and awake hours. Tap anything to change it.'}
+        </p>
       </header>
 
       <section>
@@ -43,6 +46,7 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
                 <span>Up at</span>
                 <input
                   type="time"
+                  disabled={readOnly}
                   value={settings[startKey]}
                   onChange={(e) => e.target.value && onSettings({ ...settings, [startKey]: e.target.value })}
                 />
@@ -51,6 +55,7 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
                 <span>Bed at</span>
                 <input
                   type="time"
+                  disabled={readOnly}
                   value={settings[endKey]}
                   onChange={(e) => e.target.value && onSettings({ ...settings, [endKey]: e.target.value })}
                 />
@@ -68,7 +73,11 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
         <ul className="list">
           {repeating.map((r) => (
             <li key={r.id}>
-              <button className="card kind-routine" onClick={() => onEdit(r)}>
+              <button
+                className="card kind-routine"
+                aria-disabled={readOnly || undefined}
+                onClick={() => !readOnly && onEdit(r)}
+              >
                 <span className="title">{r.title}</span>
                 <span className="meta">
                   {formatDays(r.days)} · {formatTime(r.start)} – {formatTime(r.end)}
@@ -85,7 +94,11 @@ export function WeekSetup({ data, onEdit, onSettings }: Props) {
           <ul className="list">
             {upcoming.map((u) => (
               <li key={u.id}>
-                <button className={`card kind-${u.kind}`} onClick={() => onEdit(u)}>
+                <button
+                  className={`card kind-${u.kind}`}
+                  aria-disabled={readOnly || undefined}
+                  onClick={() => !readOnly && onEdit(u)}
+                >
                   <span className="title">{u.title}</span>
                   <span className="meta">
                     {u.date && shortDate(u.date)}

@@ -45,6 +45,8 @@ A **menu** button (☰, top right) opens a small sheet:
 | Today | The day view (default) |
 | Daily goals | Add, change or remove goals |
 | My week | Routines, awake hours, and one-off plans coming up |
+| Share my day | Invite someone to see your day; see who can; days shared with you (signed in only) |
+| *Shared with you* | One entry per accepted share ("Sam's day"), opening it view only |
 | *Appearance* | Auto / Light / Dark (see below) |
 | *Account* | "Signed in as …" and **Sign out** (synced mode); "Saved on this device" (local mode) |
 
@@ -74,6 +76,15 @@ All goals, grouped as **Going now**, **Starting later** (start date in the futur
 ### My week
 
 Awake hours (weekdays and weekends separately), repeating routines, and one-off routines and fun coming up.
+
+### Sharing a day
+
+One person invites another by email to see their day: **view only**, **one-way**, and **everything** (routines, goals, assignments, fun). Only people on the allowlist can sign in, so only they can ever see or accept an invite. An invite to any other address does nothing, and the sender isn't told either way.
+
+- **Share my day** page: an email field and **Send invite** (catches typos, inviting yourself, and inviting someone twice). **Who can see your day** lists each invite as *Invite sent*, *Can see your day* or *Said no thanks*, with **Cancel** / **Stop sharing**. **Shared with you** lists days you can view (**View**, **Remove**) and invites waiting for an answer.
+- **Notifications:** a new invite shows as a calm alert at the top of your own pages ("Sam wants to share their day with you." with **Accept** / **No thanks**), and the menu button gets a dot (its label says how many). Invites refresh when the app opens, when it comes back into view, and every minute while it's open. They're in-app only: no email or push.
+- **Viewing:** pick "Sam's day" in the menu. A banner reads "Sam's day · view only" with **Back to my day**, and the greeting reads "Sam's day". All pages show their data with nothing to add, edit, drag, schedule or check off. If they stop sharing while you're looking, it goes back to your own day at the next refresh.
+- Either side can end it at any time: the owner with **Stop sharing**, the viewer with **Remove**.
 
 ### Editor
 
@@ -118,6 +129,15 @@ There's deliberately no second hosted project. Local Supabase gives a dev databa
 
 ## Access
 
+**Sharing** (`supabase/migrations/20261004000000_shares.sql`) uses a `public.shares` table (owner, owner email and name, invitee email, invitee id, status). It's its own table rather than a record kind because two different people read it. Its rules:
+- The owner sees invites they sent; the invitee sees invites addressed to their sign-in email. Nobody else sees any.
+- Inserting names only the invitee's email. A trigger sets the owner (from the sign-in token), their name and email, and `pending`. You can't invite yourself, and each person can be invited once.
+- There is no update. Accepting or declining goes through `respond_to_share()`, which only touches an invite addressed to the caller's email.
+- Either side can delete.
+- `records` gains a read-only policy: you can read someone's records if they shared with you and you accepted (`sharing.can_view_day_of`). Writes stay owner-only.
+- The helper functions live in a `sharing` schema that the API doesn't expose, separate from `private`, which holds the allowlist the app must never read.
+- The app always loads one person's records (`user_id = …`), so shared rows never mix into your own day.
+
 Each person signs in with Google. Their name and photo come from their Google profile (`src/lib/profile.ts` reads Supabase's `user_metadata`, refreshed at every sign-in). The day view greets them by first name, and the menu shows their photo (or their initial), name and email. Local mode has no profile, so the greeting has no name.
 
 Google sign-in only, invite-only (Google OAuth Testing mode plus a database allowlist hook). Row-level security means each account sees only its own records. Sign out is in the menu.
@@ -127,6 +147,7 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 | Layer | Tool | Where |
 | --- | --- | --- |
 | Logic | Vitest | `src/lib/*.test.ts` |
+| Sharing against a real database | Ad hoc: the app's sharing code run against `supabase start` with local test users | Not in CI (needs the full local stack) |
 | Components, as Eden uses them | Testing Library + user-event (jsdom) | `src/components/*.test.tsx` |
 | Real browser at phone size, light and dark | Playwright (Chromium, 375×812) | `e2e/*.spec.ts` |
 | Database access rules | pgTAP | `supabase/tests/database/` |
@@ -134,6 +155,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-04:** Share your day by invite: view only, one-way, allowlisted people only. In-app invite alerts, a Share my day page, and viewing a shared day from the menu.
 
 - **2026-10-03:** Greet whoever is signed in by their Google first name (was always "Eden"); their photo and name are in the menu. More family members can be invited (allowlist plus Google test users).
 

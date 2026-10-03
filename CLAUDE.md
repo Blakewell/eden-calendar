@@ -23,7 +23,8 @@ A daily schedule web app built by Blake for his family, designed first for Eden 
 
 - Vite + React + TypeScript, no router, no UI library. Plain CSS in `src/index.css`.
 - Data is a flat list of records (`src/lib/types.ts`: routine, goal, task, fun, check, settings) behind a `Store` interface (`src/lib/store.ts`): `localStore` when Supabase env vars are absent, `supabaseStore` otherwise. All day logic is pure functions in `src/lib/plan.ts`; keep UI components thin.
-- Supabase: a single `public.records` table (`user_id`, `id`, `kind`, `data jsonb`) with row-level security. New fields go in `data`; no new tables for new kinds unless there's a strong reason.
+- Supabase: a `public.records` table (`user_id`, `id`, `kind`, `data jsonb`) with row-level security. New fields go in `data`; no new tables for new kinds unless there's a strong reason. `public.shares` is the one exception: it's read by two different people (sharer and invitee).
+- **Sharing is view only and one-way.** Others can read your records only through an accepted share (`sharing.can_view_day_of`); writes are always owner-only. The app must load records filtered by `user_id` (`supabaseStore(db, userId)`), never "everything I can see".
 - Dates are local `YYYY-MM-DD` strings and times are `HH:MM`; use the helpers in `src/lib/dates.ts` and don't pass `Date` objects around.
 
 ## Security and access

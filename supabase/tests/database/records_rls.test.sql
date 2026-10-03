@@ -10,7 +10,8 @@ select ok(
   'row-level security is on'
 );
 select policies_are('public', 'records', array[
-  'own records: select', 'own records: insert', 'own records: update', 'own records: delete'
+  'own records: select', 'own records: insert', 'own records: update', 'own records: delete',
+  'shared records: select'
 ]);
 
 insert into auth.users (id, email) values
