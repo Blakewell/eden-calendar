@@ -21,6 +21,8 @@ export function useData(store: Store) {
   }, [store])
 
   useEffect(() => {
+    // Fetching from the store is the external sync this effect exists for.
+    // oxlint-disable-next-line react/set-state-in-effect
     reload()
     const onVisible = () => document.visibilityState === 'visible' && reload()
     document.addEventListener('visibilitychange', onVisible)
