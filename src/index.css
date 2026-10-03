@@ -602,11 +602,6 @@ textarea {
   padding: 0.7rem 1rem;
 }
 
-.divider {
-  text-align: center;
-  margin: 0.75rem 0 0.25rem;
-}
-
 .import-text {
   max-width: 340px;
   margin: 0 auto 2rem;

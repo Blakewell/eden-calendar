@@ -57,7 +57,7 @@ Add a new file to `supabase/migrations/` (e.g. `supabase migration new add_somet
 
 ## Local development with sync
 
-`.env.local` (git-ignored) holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Sign in with Google or an email link. Each account only sees its own schedule (row-level security).
+`.env.local` (git-ignored) holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Sign-in is Google only (email sign-in is turned off), limited to the test users on the Google OAuth consent screen. Each account only sees its own schedule (row-level security).
 
 ## Tech
 
