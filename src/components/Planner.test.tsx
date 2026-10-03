@@ -21,6 +21,13 @@ function memoryStore(initial: Rec[] = []) {
   return { store, all: () => recs }
 }
 
+const sam = {
+  email: 'sam@example.com',
+  name: 'Sam Rivera',
+  firstName: 'Sam',
+  avatarUrl: 'https://example.com/sam.png',
+}
+
 async function renderPlanner(initial: Rec[] = [], account?: Account) {
   const mem = memoryStore(initial)
   const user = userEvent.setup()
@@ -40,9 +47,9 @@ afterEach(() => {
 })
 
 describe('Planner day view', () => {
-  it('greets Eden and shows an empty, free day', async () => {
+  it('greets without a name in local mode and shows an empty, free day', async () => {
     await renderPlanner()
-    expect(screen.getByText(/Good afternoon, Eden/)).toBeInTheDocument()
+    expect(screen.getByText('Good afternoon')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Saturday' })).toBeInTheDocument()
     expect(screen.getByText('Nothing left to fit in. Enjoy it.')).toBeInTheDocument()
   })
@@ -420,9 +427,12 @@ describe('menu', () => {
 
   it('shows who is signed in and signs out', async () => {
     const onSignOut = vi.fn()
-    const { user } = await renderPlanner([], { email: 'someone@example.com', onSignOut })
+    const { user } = await renderPlanner([], { ...sam, avatarUrl: null, onSignOut })
+    expect(screen.getByText('Good afternoon, Sam')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Menu' }))
-    expect(screen.getByText('Signed in as someone@example.com')).toBeInTheDocument()
+    expect(screen.getByText('Sam Rivera')).toBeInTheDocument()
+    expect(screen.getByText('Signed in as sam@example.com')).toBeInTheDocument()
+    expect(screen.getByText('S')).toHaveClass('avatar') // no photo: their initial
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(onSignOut).toHaveBeenCalled()
   })
@@ -444,6 +454,14 @@ describe('menu', () => {
 
     await user.click(within(appearance).getByRole('radio', { name: 'Auto' }))
     expect(document.documentElement).not.toHaveAttribute('data-theme')
+  })
+
+  it('shows their Google photo', async () => {
+    const { user } = await renderPlanner([], { ...sam, onSignOut: vi.fn() })
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    const photo = document.querySelector('img.avatar')!
+    expect(photo).toHaveAttribute('src', sam.avatarUrl)
+    expect(photo).toHaveAttribute('referrerpolicy', 'no-referrer')
   })
 
   it('has no sign out in local mode', async () => {

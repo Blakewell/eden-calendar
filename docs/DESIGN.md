@@ -4,7 +4,7 @@ How the app works and why. Keep this current: every change that affects what Ede
 
 ## Purpose
 
-A calm daily schedule for Eden, a teen, used mostly on her phone. It answers three questions about any day: what's fixed, what she wants to get done, and how much free time is left.
+A calm daily schedule, designed first for Eden (a teen) and used mostly on a phone. Each invited family member has their own schedule. It answers three questions about any day: what's fixed, what she wants to get done, and how much free time is left.
 
 ## Principles
 
@@ -118,6 +118,8 @@ There's deliberately no second hosted project. Local Supabase gives a dev databa
 
 ## Access
 
+Each person signs in with Google. Their name and photo come from their Google profile (`src/lib/profile.ts` reads Supabase's `user_metadata`, refreshed at every sign-in). The day view greets them by first name, and the menu shows their photo (or their initial), name and email. Local mode has no profile, so the greeting has no name.
+
 Google sign-in only, invite-only (Google OAuth Testing mode plus a database allowlist hook). Row-level security means each account sees only its own records. Sign out is in the menu.
 
 ## Testing
@@ -132,6 +134,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-03:** Greet whoever is signed in by their Google first name (was always "Eden"); their photo and name are in the menu. More family members can be invited (allowlist plus Google test users).
 
 - **2026-10-03:** Schedule Anytime goals and assignments onto the calendar for a day: one-tap **Schedule** (next free gap), or tap an empty spot and pick one. Unschedule from the editor.
 
