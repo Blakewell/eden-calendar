@@ -5,7 +5,7 @@ import type { Rec, Store } from './types'
 
 const KEY = 'eden-calendar:records'
 
-function readAll(): Rec[] {
+export function readLocal(): Rec[] {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? '[]')
   } catch {
@@ -17,15 +17,19 @@ function writeAll(recs: Rec[]) {
   localStorage.setItem(KEY, JSON.stringify(recs))
 }
 
+export function clearLocal() {
+  localStorage.removeItem(KEY)
+}
+
 export const localStore: Store = {
   async loadAll() {
-    return readAll()
+    return readLocal()
   },
   async put(rec) {
-    writeAll([...readAll().filter((r) => r.id !== rec.id), rec])
+    writeAll([...readLocal().filter((r) => r.id !== rec.id), rec])
   },
   async remove(id) {
-    writeAll(readAll().filter((r) => r.id !== id))
+    writeAll(readLocal().filter((r) => r.id !== id))
   },
 }
 

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
-import { localStore, supabaseStore } from './lib/store'
+import { localStore, readLocal, supabaseStore } from './lib/store'
 import { Planner } from './components/Planner'
 import { SignIn } from './components/SignIn'
+import { ImportLocal } from './components/ImportLocal'
 
 function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
+  const [hasLocal, setHasLocal] = useState(() => readLocal().length > 0)
   const store = useMemo(() => supabaseStore(db), [db])
 
   useEffect(() => {
@@ -21,6 +23,7 @@ function SyncedApp({ db }: { db: NonNullable<typeof supabase> }) {
 
   if (!ready) return null
   if (!session) return <SignIn db={db} />
+  if (hasLocal) return <ImportLocal store={store} onDone={() => setHasLocal(false)} />
 
   return (
     <Planner
