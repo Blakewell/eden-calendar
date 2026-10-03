@@ -24,7 +24,7 @@ npm install
 npm run dev
 ```
 
-With no configuration the app runs in **local mode**, which saves to the browser it's open in.
+`npm run dev` always runs in **local mode**, which saves to the browser it's open in and needs no sign-in. It never touches the live database. See [Developing safely](#developing-safely) for the other ways to run it.
 
 ## Tests
 
@@ -73,9 +73,40 @@ Without the secrets, the database step is skipped and the app still deploys.
 
 Add a new file to `supabase/migrations/` (e.g. `supabase migration new add_something`), commit, and push to `main`.
 
-## Local development with sync
+## Developing safely
 
-`.env.local` (git-ignored) holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Sign-in is Google only (email sign-in is turned off), limited to the test users on the Google OAuth consent screen. Each account only sees its own schedule (row-level security).
+There is one hosted database, and it's **live**: Eden's real schedule. Development and tests stay off it by default.
+
+| Command | Data goes to | Sign-in | Use it for |
+| --- | --- | --- | --- |
+| `npm run dev` | This browser only (local mode) | None | Almost everything: UI and logic changes |
+| `npm run dev:supabase` | A local Supabase in Docker | Google (setup below) | Changes to sync, sign-in, migrations or access rules |
+| `npm run dev:live` | **The live database** | Google | Rarely: checking something against real data. Port 5173 |
+
+None of the tests touch the live database. Unit and component tests use an in-memory store, Playwright runs the app in local mode, and `supabase test db` builds a throwaway database from the migrations.
+
+### Local Supabase (`npm run dev:supabase`)
+
+Needs Docker (Docker Desktop, OrbStack or Colima; all free for personal use). `supabase start` builds the database from `supabase/migrations/`, the same as CI.
+
+```bash
+supabase start          # first run downloads the images
+npm run dev:supabase    # app at http://localhost:5173
+supabase test db        # database security tests
+supabase stop           # when done
+```
+
+To sign in locally with Google (one-time setup):
+
+1. In Google Cloud Console, under the OAuth client, add `http://127.0.0.1:54321/auth/v1/callback` as an authorized redirect URI.
+2. Create `supabase/.env` (git-ignored) with `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=` set to the client's values, then `supabase stop && supabase start`.
+3. Allow your account in the local database (the sign-up allowlist starts empty): `supabase db query "insert into private.allowed_emails (email) values ('you@example.com')"`, using your address. This targets the local database because there's no `--linked`.
+
+Local Studio (at http://127.0.0.1:54323) shows the local data.
+
+### Live (`npm run dev:live`)
+
+`.env.local` (git-ignored) holds the live `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; copy `.env.example` to start. Only `npm run dev:live` reads it. Sign-in is Google only (email sign-in is turned off), limited to the test users on the Google OAuth consent screen. Each account only sees its own schedule (row-level security).
 
 ## Tech
 

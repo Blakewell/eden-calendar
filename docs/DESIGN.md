@@ -99,6 +99,18 @@ Dates are local `YYYY-MM-DD` strings and times are `HH:MM`.
 - `Planner` owns the current page, the selected date, the open editor and the menu. Pages are `DayView` (with `DayCalendar`), `Goals` and `WeekSetup`. `Menu` handles navigation and sign-out.
 - `Store` interface: `localStore` (browser) or `supabaseStore` (synced), chosen by whether the Supabase env vars are set.
 
+## Environments
+
+| Environment | Database | How |
+| --- | --- | --- |
+| Live | Supabase project `jhwqsgmcyjjhntksplep` (Free plan) | GitHub Pages; deployed on merge to `main` |
+| Local mode | None (browser storage) | `npm run dev`; also used by Playwright |
+| Local Supabase | Docker, built from `supabase/migrations/` | `supabase start` then `npm run dev:supabase` |
+| CI database | Throwaway Docker Postgres | `supabase db start` and `supabase test db` on every pull request |
+| Live from a laptop | Live | `npm run dev:live` (on purpose only) |
+
+There's deliberately no second hosted project. Local Supabase gives a dev database for $0 without keeping two projects' migrations and auth settings in step. `npm run dev` ignores `.env.local`, so day-to-day development can't change Eden's real data by accident.
+
 ## Access
 
 Google sign-in only, invite-only (Google OAuth Testing mode plus a database allowlist hook). Row-level security means each account sees only its own records. Sign out is in the menu.
@@ -115,6 +127,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-03:** Safe development: `npm run dev` is always local mode; `dev:supabase` (local Docker Supabase) and `dev:live` (explicit) added.
 
 - **2026-10-03:** Drag timed goals and fun to move them (a goal moves for that day only). Appearance setting (Auto / Light / Dark) in the menu.
 

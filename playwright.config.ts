@@ -20,10 +20,9 @@ export default defineConfig({
     { name: 'phone-dark', use: { browserName: 'chromium', colorScheme: 'dark' } },
   ],
   webServer: {
-    command: 'npx vite --port 4173 --strictPort',
+    // `npm run dev` runs in local mode, whatever .env.local says.
+    command: 'npm run dev -- --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
-    // Empty values override .env.local so the app runs in local mode.
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
   },
 })
