@@ -4,9 +4,12 @@ import {
   blocksOn,
   calendarRange,
   checkId,
+  goalStartOn,
   goalStatus,
   goalsOn,
+  isMovable,
   makeCheck,
+  moveTo,
   placeBlocks,
   routinesOn,
   split,
@@ -179,6 +182,48 @@ describe('blocksOn', () => {
   })
 })
 
+describe('moving things on the calendar', () => {
+  it('only lets goals and fun move; routines are fixed', () => {
+    expect(isMovable(goal())).toBe(true)
+    expect(isMovable(fun())).toBe(true)
+    expect(isMovable(routine())).toBe(false)
+  })
+
+  it('moves fun and keeps its length', () => {
+    expect(moveTo(fun({ start: '14:00', end: '15:30' }), SAT, '16:20', SAT)).toMatchObject({
+      start: '16:20',
+      end: '17:50',
+    })
+    expect(moveTo(fun({ start: '14:00', end: null }), SAT, '16:20', SAT)).toMatchObject({ start: '16:20', end: null })
+  })
+
+  it('moves a goal for that day only', () => {
+    const piano = goal({ start: '16:00', minutes: 40 })
+    const moved = moveTo(piano, SAT, '19:10', SAT) as typeof piano
+    expect(moved).toMatchObject({ start: '16:00', moved: { [SAT]: '19:10' } })
+    expect(goalStartOn(moved, SAT)).toBe('19:10')
+    expect(goalStartOn(moved, SUN)).toBe('16:00')
+
+    const data = split([moved])
+    expect(blocksOn(data, SAT)[0]).toMatchObject({ start: '19:10', end: '19:50' })
+    expect(blocksOn(data, SUN)[0]).toMatchObject({ start: '16:00' })
+  })
+
+  it('clears the exception when a goal is moved back to its usual time', () => {
+    const piano = goal({ start: '16:00', moved: { [SAT]: '19:10' } })
+    expect(moveTo(piano, SAT, '16:00', SAT)).toMatchObject({ moved: {} })
+  })
+
+  it('drops moves for days that have passed', () => {
+    const piano = goal({ start: '16:00', moved: { [FRI]: '18:00', [MON]: '17:00' } })
+    expect(moveTo(piano, SAT, '19:00', SAT)).toMatchObject({ moved: { [MON]: '17:00', [SAT]: '19:00' } })
+  })
+
+  it('ignores a move on an anytime goal', () => {
+    expect(goalStartOn(goal({ start: null, moved: { [SAT]: '10:00' } }), SAT)).toBeNull()
+  })
+})
+
 const block = (start: string, end: string): Block => ({ rec: routine({ title: start, start, end }), start, end })
 
 describe('placeBlocks', () => {
@@ -219,9 +264,9 @@ describe('calendarRange', () => {
 })
 
 describe('split', () => {
-  it('reads goals saved before they had a start time as anytime', () => {
-    const { start: _, ...old } = goal()
-    expect(split([old as never]).goals[0].start).toBeNull()
+  it('reads goals saved before they had a start time as anytime, with no moves', () => {
+    const { start: _, moved: __, ...old } = goal()
+    expect(split([old as never]).goals[0]).toMatchObject({ start: null, moved: {} })
   })
 
   it('sorts records by kind and fills missing settings with defaults', () => {

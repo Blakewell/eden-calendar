@@ -12,7 +12,7 @@ A calm daily schedule for Eden, a teen, used mostly on her phone. It answers thr
 - **Phone first.** Designed at 375px wide: no sideways scrolling, tap targets at least 40px, text inputs at least 16px. Installable to the home screen.
 - **Four kinds, four colors**, used the same way everywhere.
 - **Easy to adjust.** Tap anything to change it; −/+ steppers for lengths.
-- Light and dark mode.
+- Light and dark mode: follows the phone by default and can be set in the menu.
 
 ## The four kinds
 
@@ -31,6 +31,7 @@ The calendar works in 10-minute chunks (`CHUNK` in `src/lib/plan.ts`):
 - Lengths step by 10 minutes (goals and assignments).
 - Time pickers step by 10 minutes, and new items default to the next 10-minute mark.
 - Tapping an empty chunk on the calendar starts adding something at that time.
+- Dragging a block snaps it to 10-minute chunks.
 - Free gaps shorter than one chunk aren't shown.
 
 Times that aren't on a 10-minute mark (such as school at 7:45) still work and are drawn at their exact position.
@@ -44,15 +45,20 @@ A **menu** button (☰, top right) opens a small sheet:
 | Today | The day view (default) |
 | Daily goals | Add, change or remove goals |
 | My week | Routines, awake hours, and one-off plans coming up |
+| *Appearance* | Auto / Light / Dark (see below) |
 | *Account* | "Signed in as …" and **Sign out** (synced mode); "Saved on this device" (local mode) |
 
 The current page is marked in the menu. Tapping the backdrop or pressing Escape closes it.
+
+**Appearance** is per device and stored in this browser (`src/lib/theme.ts`), not synced. **Auto** follows the phone's setting. Light or Dark sets `data-theme` on `<html>`, which overrides the system color scheme in `index.css`, and updates the browser's theme color. It's applied before the first paint, so the page never flashes the wrong colors.
 
 ### Today (day view)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
 2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open assignments), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again.
 3. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
+
+   **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
 4. **Daily goals** checklist (all goals for the day, showing time when set), **Assignments** checklist, and **Maybe today** (untimed fun).
 5. A floating **+ Add** button asks which kind, then opens the editor.
 
@@ -75,20 +81,21 @@ A flat list of records (`src/lib/types.ts`), stored either in the browser (local
 | Kind | Fields |
 | --- | --- |
 | `routine` | title, start, end, days, date (one-off) |
-| `goal` | title, minutes, start (HH:MM or null), days, from, until |
+| `goal` | title, minutes, start (HH:MM or null), moved (date → HH:MM for days it was dragged), days, from, until |
 | `task` | title, minutes, date, due, doneOn |
 | `fun` | title, date, start, end |
 | `check` | goal id + date (a goal done on a day) |
 | `settings` | awake hours for weekdays and weekends |
 
-New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` existed are read as Anytime (`split` in `plan.ts`).
+New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` and `moved` existed are read as Anytime with no moves (`split` in `plan.ts`). When a goal is moved, `moved` entries for past days are dropped. Changing a goal's usual time in the editor clears its `moved` entries.
 
 Dates are local `YYYY-MM-DD` strings and times are `HH:MM`.
 
 ## Architecture
 
 - Vite, React and TypeScript, with no router or UI library. Plain CSS in `src/index.css`, with colors as tokens for light and dark.
-- `src/lib/plan.ts` holds all the day logic as pure functions: what applies on a date, the calendar's blocks, free time, side-by-side layout and the calendar range. Components stay thin.
+- `src/lib/plan.ts` holds all the day logic as pure functions: what applies on a date, the calendar's blocks, free time, side-by-side layout, the calendar range and moves (`moveTo`, `goalStartOn`). Components stay thin.
+- `DayCalendar` handles dragging with pointer events. A non-passive `touchmove` listener on the grid stops the page from scrolling only while a drag is active.
 - `Planner` owns the current page, the selected date, the open editor and the menu. Pages are `DayView` (with `DayCalendar`), `Goals` and `WeekSetup`. `Menu` handles navigation and sign-out.
 - `Store` interface: `localStore` (browser) or `supabaseStore` (synced), chosen by whether the Supabase env vars are set.
 
@@ -108,5 +115,7 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-03:** Drag timed goals and fun to move them (a goal moves for that day only). Appearance setting (Auto / Light / Dark) in the menu.
 
 - **2026-10-03:** Menu (Today / Daily goals / My week / Sign out). Daily goals page for adding, changing and removing goals. Goals can have a start time and appear on the calendar. The day view's schedule became a calendar in 10-minute chunks, with tap-to-add and side-by-side overlaps. Steppers and time pickers move in 10-minute steps. Added Playwright browser tests to CI.

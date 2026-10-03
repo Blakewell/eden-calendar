@@ -268,6 +268,54 @@ describe('the day calendar', () => {
   })
 })
 
+describe('dragging on the calendar', () => {
+  // Each 10-minute chunk is 14px tall.
+  function drag(card: Element, dy: number, pointerType = 'mouse') {
+    fireEvent.pointerDown(card, { pointerId: 1, button: 0, clientY: 100, pointerType })
+    fireEvent.pointerMove(card, { pointerId: 1, clientY: 100 + dy / 2, pointerType })
+    fireEvent.pointerMove(card, { pointerId: 1, clientY: 100 + dy, pointerType })
+    fireEvent.pointerUp(card, { pointerId: 1, clientY: 100 + dy, pointerType })
+    fireEvent.click(card)
+  }
+  const block = (title: string) =>
+    within(screen.getByRole('region', { name: 'Schedule' }))
+      .getByText(title)
+      .closest('.card')!
+
+  it('moves a goal to a new time for that day only, snapping to 10 minutes', async () => {
+    const { all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', minutes: 40 })])
+    drag(block('Piano'), 14 * 6 * 2 + 14 * 2 + 3) // 2 hours, 2 chunks (and a few px)
+
+    await waitFor(() => expect(all()[0]).toMatchObject({ start: '16:00', moved: { [SAT]: '18:20' } }))
+    expect(block('Piano')).toHaveTextContent('6:20 PM – 7:00 PM')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument() // dragging doesn't open the editor
+  })
+
+  it('moves a fun plan, keeping its length', async () => {
+    const { all } = await renderPlanner([fun({ title: "Maya's house", start: '14:00', end: '15:30' })])
+    drag(block("Maya's house"), -14 * 6)
+    await waitFor(() => expect(all()[0]).toMatchObject({ start: '13:00', end: '14:30' }))
+  })
+
+  it('does not move routines', async () => {
+    const { store } = await renderPlanner([routine({ title: 'Soccer', days: [6], start: '10:00', end: '11:30' })])
+    drag(block('Soccer'), 14 * 6)
+    expect(store.put).not.toHaveBeenCalled()
+  })
+
+  it('on a touch screen, a quick swipe scrolls instead of dragging', async () => {
+    const { store } = await renderPlanner([goal({ title: 'Piano', start: '16:00' })])
+    drag(block('Piano'), 14 * 6, 'touch') // no hold first
+    expect(store.put).not.toHaveBeenCalled()
+  })
+
+  it('a plain tap still opens the editor', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Piano', start: '16:00' })])
+    await user.click(block('Piano'))
+    expect(within(screen.getByRole('dialog')).getByLabelText('What')).toHaveValue('Piano')
+  })
+})
+
 describe('menu', () => {
   it('moves between Today, Daily goals and My week, marking the current page', async () => {
     const { user } = await renderPlanner()
@@ -293,6 +341,25 @@ describe('menu', () => {
     expect(screen.getByText('Signed in as someone@example.com')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(onSignOut).toHaveBeenCalled()
+  })
+
+  it('switches between light and dark, and back to following the phone', async () => {
+    const { user } = await renderPlanner()
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    const appearance = screen.getByRole('radiogroup', { name: 'Appearance' })
+    expect(within(appearance).getByRole('radio', { name: 'Auto' })).toBeChecked()
+
+    await user.click(within(appearance).getByRole('radio', { name: 'Dark' }))
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(within(appearance).getByRole('radio', { name: 'Dark' })).toBeChecked()
+    // The menu stays open so it's easy to compare.
+    expect(screen.getByRole('dialog', { name: 'Menu' })).toBeInTheDocument()
+
+    await user.click(within(appearance).getByRole('radio', { name: 'Light' }))
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
+
+    await user.click(within(appearance).getByRole('radio', { name: 'Auto' }))
+    expect(document.documentElement).not.toHaveAttribute('data-theme')
   })
 
   it('has no sign out in local mode', async () => {

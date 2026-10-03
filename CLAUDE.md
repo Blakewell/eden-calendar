@@ -14,8 +14,9 @@ A daily schedule web app for Eden, a teen, used mainly **on her phone**. Built b
 - **Weekdays differ from weekends** (separate awake hours; Weekdays / Weekends / Every day presets).
 - **Easy to adjust:** tap anything to edit; −/+ steppers for durations.
 - **10-minute chunks:** the day calendar splits each hour into six 10-minute chunks; steppers and time pickers move in 10s (`CHUNK` in `src/lib/plan.ts`).
-- **Menu** (☰, top right) for Today / Daily goals / My week and Sign out.
-- Light and dark mode both supported; define colors as CSS tokens in `src/index.css` and check both.
+- **Menu** (☰, top right) for Today / Daily goals / My week, Appearance (Auto / Light / Dark, per device) and Sign out.
+- **Drag to move:** timed goals and fun can be dragged on the calendar (hold first on touch). Routines are fixed. A goal moves for that day only.
+- Light and dark mode both supported; define colors as CSS tokens in `src/index.css` and check both. Dark tokens live in two places (the `prefers-color-scheme` block and `:root[data-theme='dark']`); keep them identical.
 
 ## Architecture
 

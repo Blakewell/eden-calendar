@@ -1,8 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { readTheme, saveTheme, type Theme } from '../lib/theme'
 
 export type View = 'day' | 'goals' | 'week'
 
 export type Account = { email: string | undefined; onSignOut: () => void }
+
+const THEMES: [Theme, string][] = [
+  ['auto', 'Auto'],
+  ['light', 'Light'],
+  ['dark', 'Dark'],
+]
 
 const ITEMS: [View, string, string][] = [
   ['day', 'Today', 'Your day at a glance'],
@@ -20,6 +27,7 @@ type Props = {
 // A small sheet for getting around and signing out. Mounted only while open.
 export function Menu({ view, account, onView, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
+  const [theme, setTheme] = useState(readTheme)
 
   useEffect(() => {
     const d = dialog.current
@@ -54,6 +62,28 @@ export function Menu({ view, account, onView, onClose }: Props) {
           ))}
         </ul>
       </nav>
+
+      <div className="menu-theme">
+        <span className="muted small" id="appearance">
+          Appearance
+        </span>
+        <div className="segmented" role="radiogroup" aria-labelledby="appearance">
+          {THEMES.map(([t, label]) => (
+            <button
+              key={t}
+              role="radio"
+              aria-checked={theme === t}
+              className={theme === t ? 'on' : ''}
+              onClick={() => {
+                saveTheme(t)
+                setTheme(t)
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="menu-account">
         {account ? (

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { EditableKind, Goal, Store, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
-import { CHUNK, checkId, makeCheck } from '../lib/plan'
+import { CHUNK, checkId, makeCheck, moveTo } from '../lib/plan'
 import { nowHHMM, roundUp, today } from '../lib/dates'
 import { useData } from '../lib/useData'
 import { DayView } from './DayView'
@@ -64,6 +64,7 @@ export function Planner({ store, account }: { store: Store; account?: Account })
             onDate={setDate}
             onEdit={(record) => setEditor({ record })}
             onAddAt={(start) => setEditor({ record: null, start })}
+            onMove={(rec, start) => put(moveTo(rec, date, start, today()))}
             onToggleGoal={toggleGoal}
             onToggleTask={toggleTask}
           />

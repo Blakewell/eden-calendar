@@ -81,12 +81,16 @@ export function Editor({ date, defaultStart, record, newKind, onSave, onDelete, 
       onSave({ kind, id, title: t, start, end: end > start ? end : start, days, date: once ? onceDate : null })
     } else if (kind === 'goal') {
       if (days.length === 0) return
+      const newStart = timed ? start : null
+      // Changing the usual time resets any days it was dragged elsewhere.
+      const keepMoves = record?.kind === 'goal' && record.start === newStart
       onSave({
         kind,
         id,
         title: t,
         minutes,
-        start: timed ? start : null,
+        start: newStart,
+        moved: keepMoves ? record.moved : {},
         days,
         from: from || null,
         until: until && (!from || until >= from) ? until : null,

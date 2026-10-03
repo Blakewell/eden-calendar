@@ -15,7 +15,7 @@ export function split(recs: Rec[]): Data {
   const data: Data = { routines: [], goals: [], tasks: [], fun: [], checks: new Set(), settings: DEFAULT_SETTINGS }
   for (const r of recs) {
     if (r.kind === 'routine') data.routines.push(r)
-    else if (r.kind === 'goal') data.goals.push({ ...r, start: r.start ?? null })
+    else if (r.kind === 'goal') data.goals.push({ ...r, start: r.start ?? null, moved: r.moved ?? {} })
     else if (r.kind === 'task') data.tasks.push(r)
     else if (r.kind === 'fun') data.fun.push(r)
     else if (r.kind === 'check') data.checks.add(r.id)
@@ -60,6 +60,11 @@ export function tasksOn(tasks: Task[], date: string, today: string): Task[] {
     })
 }
 
+// A timed goal's start on a given day: where it was dragged that day, or its usual time.
+export function goalStartOn(goal: Goal, date: string): string | null {
+  return goal.start ? (goal.moved[date] ?? goal.start) : null
+}
+
 // Anything with a set time on the day's calendar.
 export type Block = { rec: Routine | Fun | Goal; start: string; end: string }
 
@@ -71,8 +76,8 @@ export function blocksOn(data: Data, date: string): Block[] {
     if (f.start) blocks.push({ rec: f, start: f.start, end: f.end && f.end > f.start ? f.end : f.start })
   }
   for (const g of goalsOn(data.goals, date)) {
-    if (g.start)
-      blocks.push({ rec: g, start: g.start, end: fromMinutes(Math.min(toMinutes(g.start) + g.minutes, DAY)) })
+    const start = goalStartOn(g, date)
+    if (start) blocks.push({ rec: g, start, end: fromMinutes(Math.min(toMinutes(start) + g.minutes, DAY)) })
   }
   return blocks.sort((a, b) => a.start.localeCompare(b.start))
 }
@@ -129,6 +134,23 @@ export function calendarRange(blocks: Block[], hours: [string, string]): [number
     to = Math.max(to, toMinutes(b.end), toMinutes(b.start) + MIN_BLOCK)
   }
   return [Math.floor(from / 60) * 60, Math.min(DAY, Math.ceil(to / 60) * 60)]
+}
+
+// Things on the calendar that can be dragged; routines are fixed.
+export const isMovable = (rec: Block['rec']): rec is Goal | Fun => rec.kind !== 'routine'
+
+// The record after dragging it to `start` on `date`. Fun keeps its length.
+// A goal moves for that day only; past days' moves are dropped as they no
+// longer matter, and moving it back to its usual time clears the exception.
+export function moveTo(rec: Goal | Fun, date: string, start: string, today: string): Goal | Fun {
+  if (rec.kind === 'fun') {
+    if (!rec.start) return rec
+    const end = rec.end && fromMinutes(toMinutes(rec.end) + toMinutes(start) - toMinutes(rec.start))
+    return { ...rec, start, end }
+  }
+  const moved = Object.fromEntries(Object.entries(rec.moved).filter(([d]) => d >= today && d !== date))
+  if (start !== rec.start) moved[date] = start
+  return { ...rec, moved }
 }
 
 export function isWeekend(date: string): boolean {

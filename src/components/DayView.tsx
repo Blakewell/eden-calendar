@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Data } from '../lib/plan'
-import { awakeHours, blocksOn, checkId, funOn, goalsOn, tasksOn, timeline } from '../lib/plan'
-import type { Goal, Task } from '../lib/types'
+import { awakeHours, blocksOn, checkId, funOn, goalStartOn, goalsOn, tasksOn, timeline } from '../lib/plan'
+import type { Fun, Goal, Task } from '../lib/types'
 import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
 import type { Editable } from './Editor'
 import { DayCalendar } from './DayCalendar'
@@ -12,11 +12,12 @@ type Props = {
   onDate: (date: string) => void
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
+  onMove: (rec: Goal | Fun, start: string) => void
   onToggleGoal: (goal: Goal) => void
   onToggleTask: (task: Task) => void
 }
 
-export function DayView({ data, date, onDate, onEdit, onAddAt, onToggleGoal, onToggleTask }: Props) {
+export function DayView({ data, date, onDate, onEdit, onAddAt, onMove, onToggleGoal, onToggleTask }: Props) {
   const [now, setNow] = useState(nowHHMM)
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
@@ -86,6 +87,9 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onToggleGoal, onT
 
       <section aria-labelledby="schedule">
         <h3 id="schedule">Schedule</h3>
+        {blocks.some((b) => b.rec.kind !== 'routine') && (
+          <p className="muted small hint">Hold and drag a goal or fun plan to move it.</p>
+        )}
         <DayCalendar
           blocks={blocks}
           free={slots}
@@ -94,6 +98,7 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onToggleGoal, onT
           isDone={(rec) => rec.kind === 'goal' && goalDone(rec)}
           onEdit={onEdit}
           onAddAt={onAddAt}
+          onMove={onMove}
         />
       </section>
 
@@ -114,7 +119,7 @@ export function DayView({ data, date, onDate, onEdit, onAddAt, onToggleGoal, onT
                   <span className="title">{g.title}</span>
                   <span className="meta">
                     {formatDuration(g.minutes)}
-                    {g.start && ` · ${formatTime(g.start)}`}
+                    {g.start && ` · ${formatTime(goalStartOn(g, date)!)}`}
                   </span>
                 </button>
               </li>

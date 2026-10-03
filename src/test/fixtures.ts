@@ -23,6 +23,7 @@ export const goal = (over: Partial<Goal> = {}): Goal => ({
   title: 'Reading',
   minutes: 30,
   start: null,
+  moved: {},
   days: [0, 1, 2, 3, 4, 5, 6],
   from: null,
   until: null,
