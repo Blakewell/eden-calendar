@@ -35,14 +35,16 @@ export const localStore: Store = {
 
 // ---------- Supabase (synced) ----------
 // One `records` table: (user_id, id) key, a `kind`, and the rest as JSON.
+// Row-level security also lets people read days shared with them, so always
+// load one person's records: your own, or (read-only) someone who shared theirs.
 
 type Row = { id: string; kind: Rec['kind']; data: Record<string, unknown> }
 
-export function supabaseStore(db: SupabaseClient): Store {
+export function supabaseStore(db: SupabaseClient, userId: string): Store {
   const table = () => db.from('records')
   return {
     async loadAll() {
-      const { data, error } = await table().select('id, kind, data')
+      const { data, error } = await table().select('id, kind, data').eq('user_id', userId)
       if (error) throw error
       return (data as Row[]).map((r) => ({ ...r.data, id: r.id, kind: r.kind }) as Rec)
     },
@@ -55,8 +57,16 @@ export function supabaseStore(db: SupabaseClient): Store {
       if (error) throw error
     },
     async remove(id) {
-      const { error } = await table().delete().eq('id', id)
+      const { error } = await table().delete().eq('user_id', userId).eq('id', id)
       if (error) throw error
     },
   }
+}
+
+// Someone else's day, shared with you: view only.
+export function sharedStore(db: SupabaseClient, ownerId: string): Store {
+  const viewOnly = async () => {
+    throw new Error('This day is shared with you to view only.')
+  }
+  return { loadAll: supabaseStore(db, ownerId).loadAll, put: viewOnly, remove: viewOnly }
 }

@@ -9,17 +9,33 @@ import { Editor, type Editable } from './Editor'
 import { WeekSetup } from './WeekSetup'
 import { Goals } from './Goals'
 import { Menu, type Account, type View } from './Menu'
+import { InviteAlerts, SharePage } from './SharePage'
+import type { Share } from '../lib/sharing'
+import { ownerLabel } from '../lib/sharing'
+import type { SharesState } from '../lib/useShares'
+
+// Sharing, when signed in: invites, and whose day is on screen.
+export type SharingUI = SharesState & {
+  myEmail?: string
+  viewing: Share | null // someone else's day, view only
+  onViewDay: (share: Share | null) => void
+}
 
 // `start` is set when adding by tapping an empty spot on the calendar.
 type EditorState = { record: Editable | null; newKind?: EditableKind; start?: string } | null
 
-// `account` is set when signed in (synced); local mode has none.
-export function Planner({ store, account }: { store: Store; account?: Account }) {
+// `account` and `sharing` are set when signed in (synced); local mode has neither.
+export function Planner({ store, account, sharing }: { store: Store; account?: Account; sharing?: SharingUI }) {
   const { data, loaded, error, put, remove } = useData(store)
   const [view, setView] = useState<View>('day')
   const [menuOpen, setMenuOpen] = useState(false)
   const [date, setDate] = useState(today)
   const [editor, setEditor] = useState<EditorState>(null)
+  const viewing = sharing?.viewing ?? null
+  const readOnly = viewing !== null
+  const invites = sharing?.received.filter((s) => s.status === 'pending').length ?? 0
+  // Nothing opens the editor on a day shared with you.
+  const edit = readOnly ? () => {} : (state: NonNullable<EditorState>) => setEditor(state)
 
   function toggleGoal(goal: Goal) {
     const id = checkId(goal.id, date)
@@ -56,39 +72,63 @@ export function Planner({ store, account }: { store: Store; account?: Account })
             </span>
           ))}
         </span>
-        <button className="quiet round menu-button" aria-label="Menu" onClick={() => setMenuOpen(true)}>
+        <button
+          className="quiet round menu-button"
+          aria-label={invites ? `Menu, ${invites} new ${invites === 1 ? 'invite' : 'invites'}` : 'Menu'}
+          onClick={() => setMenuOpen(true)}
+        >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
+          {invites > 0 && <span className="badge" aria-hidden="true" />}
         </button>
       </div>
 
+      {viewing && (
+        <div className="viewing" role="status">
+          <span>
+            <strong>{ownerLabel(viewing)}'s day</strong> <span className="muted">· view only</span>
+          </span>
+          <button className="quiet" onClick={() => sharing?.onViewDay(null)}>
+            Back to my day
+          </button>
+        </div>
+      )}
+
+      {sharing && !readOnly && <InviteAlerts sharing={sharing} />}
+
       {error && <p className="error">{error}</p>}
 
-      {loaded &&
+      {view === 'share' && sharing && !readOnly ? (
+        <SharePage sharing={sharing} />
+      ) : (
+        loaded &&
         (view === 'goals' ? (
           <Goals
             data={data}
-            onEdit={(record) => setEditor({ record })}
-            onAdd={() => setEditor({ record: null, newKind: 'goal' })}
+            readOnly={readOnly}
+            onEdit={(record) => edit({ record })}
+            onAdd={() => edit({ record: null, newKind: 'goal' })}
           />
         ) : view === 'day' ? (
           <DayView
             data={data}
             date={date}
             name={account?.firstName ?? null}
+            owner={viewing && ownerLabel(viewing)}
             onDate={setDate}
-            onEdit={(record) => setEditor({ record })}
-            onAddAt={(start) => setEditor({ record: null, start })}
+            onEdit={(record) => edit({ record })}
+            onAddAt={(start) => edit({ record: null, start })}
             onMove={(rec, start) => put(moveTo(rec, date, start, today()))}
             onToggleGoal={toggleGoal}
             onToggleTask={toggleTask}
           />
         ) : (
-          <WeekSetup data={data} onEdit={(record) => setEditor({ record })} onSettings={put} />
-        ))}
+          <WeekSetup data={data} readOnly={readOnly} onEdit={(record) => edit({ record })} onSettings={put} />
+        ))
+      )}
 
-      {view === 'goals' ? (
+      {readOnly || view === 'share' ? null : view === 'goals' ? (
         <button className="add primary kind-goal" onClick={() => setEditor({ record: null, newKind: 'goal' })}>
           + Add goal
         </button>
@@ -98,7 +138,9 @@ export function Planner({ store, account }: { store: Store; account?: Account })
         </button>
       )}
 
-      {menuOpen && <Menu view={view} account={account} onView={setView} onClose={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <Menu view={view} account={account} sharing={sharing} onView={setView} onClose={() => setMenuOpen(false)} />
+      )}
 
       {editor && (
         <Editor

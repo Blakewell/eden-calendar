@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { readTheme, saveTheme, type Theme } from '../lib/theme'
 import type { Profile } from '../lib/profile'
+import { ownerLabel } from '../lib/sharing'
+import type { SharingUI } from './Planner'
 
-export type View = 'day' | 'goals' | 'week'
+export type View = 'day' | 'goals' | 'week' | 'share'
 
 export type Account = Profile & { onSignOut: () => void }
 
@@ -11,6 +13,8 @@ const THEMES: [Theme, string][] = [
   ['light', 'Light'],
   ['dark', 'Dark'],
 ]
+
+const SHARE_ITEM: [View, string, string][] = [['share', 'Share my day', 'Invite someone to see your day']]
 
 const ITEMS: [View, string, string][] = [
   ['day', 'Today', 'Your day at a glance'],
@@ -21,12 +25,13 @@ const ITEMS: [View, string, string][] = [
 type Props = {
   view: View
   account?: Account
+  sharing?: SharingUI
   onView: (view: View) => void
   onClose: () => void
 }
 
 // A small sheet for getting around and signing out. Mounted only while open.
-export function Menu({ view, account, onView, onClose }: Props) {
+export function Menu({ view, account, sharing, onView, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [theme, setTheme] = useState(readTheme)
 
@@ -46,7 +51,21 @@ export function Menu({ view, account, onView, onClose }: Props) {
     >
       <nav aria-label="Pages">
         <ul className="menu-items">
-          {ITEMS.map(([v, label, hint]) => (
+          {sharing?.viewing && (
+            <li>
+              <button
+                className="menu-item"
+                onClick={() => {
+                  sharing.onViewDay(null)
+                  onClose()
+                }}
+              >
+                <span>Back to my day</span>
+                <span className="muted small">You're viewing {ownerLabel(sharing.viewing)}'s day</span>
+              </button>
+            </li>
+          )}
+          {[...ITEMS, ...(sharing && !sharing.viewing ? SHARE_ITEM : [])].map(([v, label, hint]) => (
             <li key={v}>
               <button
                 className="menu-item"
@@ -62,6 +81,31 @@ export function Menu({ view, account, onView, onClose }: Props) {
             </li>
           ))}
         </ul>
+        {sharing && sharing.received.some((s) => s.status === 'accepted') && (
+          <>
+            <p className="menu-label muted small">Shared with you</p>
+            <ul className="menu-items">
+              {sharing.received
+                .filter((s) => s.status === 'accepted')
+                .map((s) => (
+                  <li key={s.id}>
+                    <button
+                      className="menu-item"
+                      aria-current={sharing.viewing?.id === s.id ? 'page' : undefined}
+                      onClick={() => {
+                        sharing.onViewDay(s)
+                        onView('day')
+                        onClose()
+                      }}
+                    >
+                      <span>{ownerLabel(s)}'s day</span>
+                      <span className="muted small">View only</span>
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </>
+        )}
       </nav>
 
       <div className="menu-theme">
