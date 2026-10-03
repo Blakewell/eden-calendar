@@ -13,13 +13,18 @@ import {
   timeline,
 } from '../lib/plan'
 import type { Goal, Task } from '../lib/types'
+import { KIND_LABEL } from '../lib/types'
 import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
 import type { Editable } from './Editor'
 import { DayCalendar } from './DayCalendar'
 
+export type DayTab = 'calendar' | 'todo'
+
 type Props = {
   data: Data
   date: string
+  tab: DayTab
+  onScheduled: () => void // after one-tap Schedule places something: show the calendar
   name: string | null // first name of whoever's signed in, for the greeting
   owner?: string | null // set when viewing someone else's shared day (view only)
   onDate: (date: string) => void
@@ -33,6 +38,8 @@ type Props = {
 export function DayView({
   data,
   date,
+  tab,
+  onScheduled,
   name,
   owner = null,
   onDate,
@@ -70,7 +77,10 @@ export function DayView({
   // One tap: put it in the next free gap that fits (from now, when it's today).
   function schedule(rec: Goal | Task) {
     const start = findSlot(blocks, hours, rec.minutes, isToday ? now : '00:00')
-    if (start) onMove(rec, start)
+    if (start) {
+      onMove(rec, start)
+      onScheduled()
+    }
     setNote({
       date,
       text: start
@@ -133,103 +143,124 @@ export function DayView({
         </p>
       </section>
 
-      <section aria-labelledby="schedule">
-        <h3 id="schedule">Schedule</h3>
-        {!readOnly && blocks.some((b) => b.rec.kind !== 'routine') && (
-          <p className="muted small hint">Hold and drag a goal or fun plan to move it.</p>
-        )}
-        <DayCalendar
-          blocks={blocks}
-          free={slots}
-          hours={hours}
-          now={isToday ? now : null}
-          isDone={(rec) => (rec.kind === 'goal' && goalDone(rec)) || (rec.kind === 'task' && !!rec.doneOn)}
-          onEdit={onEdit}
-          onAddAt={onAddAt}
-          onMove={onMove}
-          readOnly={readOnly}
-        />
-      </section>
-
       {note?.date === date && (
         <p className="note muted small" role="status">
           {note.text}
         </p>
       )}
 
-      {goals.length > 0 && (
-        <section>
-          <h3>Daily goals</h3>
-          <ul className="list">
-            {goals.map((g) => (
-              <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
-                <button
-                  className="check"
-                  role="checkbox"
-                  aria-checked={goalDone(g)}
-                  aria-label={`${g.title} done`}
-                  aria-disabled={readOnly || undefined}
-                  onClick={() => !readOnly && onToggleGoal(g)}
-                />
-                <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
-                  <span className="title">{g.title}</span>
-                  <span className="meta">
-                    {formatDuration(g.minutes)}
-                    {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
-                  </span>
-                </CardBody>
-                {!readOnly && !goalStartOn(g, date) && !goalDone(g) && <ScheduleButton rec={g} onSchedule={schedule} />}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {tab === 'calendar' ? (
+        <>
+          <section aria-labelledby="schedule">
+            <h3 id="schedule">Schedule</h3>
+            <p className="legend" aria-label="Colors">
+              {(['routine', 'goal', 'task', 'fun'] as const).map((k) => (
+                <span key={k} className={`legend-item kind-${k}`}>
+                  <span className="dot" /> {KIND_LABEL[k]}
+                </span>
+              ))}
+            </p>
+            {!readOnly && blocks.some((b) => b.rec.kind !== 'routine') && (
+              <p className="muted small hint">Hold and drag a goal or fun plan to move it.</p>
+            )}
+            <DayCalendar
+              blocks={blocks}
+              free={slots}
+              hours={hours}
+              now={isToday ? now : null}
+              isDone={(rec) => (rec.kind === 'goal' && goalDone(rec)) || (rec.kind === 'task' && !!rec.doneOn)}
+              onEdit={onEdit}
+              onAddAt={onAddAt}
+              onMove={onMove}
+              readOnly={readOnly}
+            />
+          </section>
+        </>
+      ) : (
+        <>
+          {goals.length + tasks.length + maybe.length === 0 && (
+            <p className="muted empty-todo">Nothing to check off{isToday ? ' today' : ''}.</p>
+          )}
 
-      {tasks.length > 0 && (
-        <section>
-          <h3>Assignments</h3>
-          <ul className="list">
-            {tasks.map((t) => (
-              <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
-                <button
-                  className="check"
-                  role="checkbox"
-                  aria-checked={!!t.doneOn}
-                  aria-label={`${t.title} done`}
-                  aria-disabled={readOnly || undefined}
-                  onClick={() => !readOnly && onToggleTask(t)}
-                />
-                <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
-                  <span className="title">{t.title}</span>
-                  <span className="meta">
-                    {formatDuration(t.minutes)}
-                    {taskStartOn(t, date) && ` · ${formatTime(taskStartOn(t, date)!)}`}
-                    {!t.doneOn && t.date < date && ' · from earlier'}
-                    {t.due && !t.doneOn && (
-                      <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
+          {goals.length > 0 && (
+            <section>
+              <h3>Daily goals</h3>
+              <ul className="list">
+                {goals.map((g) => (
+                  <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
+                    <button
+                      className="check"
+                      role="checkbox"
+                      aria-checked={goalDone(g)}
+                      aria-label={`${g.title} done`}
+                      aria-disabled={readOnly || undefined}
+                      onClick={() => !readOnly && onToggleGoal(g)}
+                    />
+                    <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
+                      <span className="title">{g.title}</span>
+                      <span className="meta">
+                        {formatDuration(g.minutes)}
+                        {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
+                      </span>
+                    </CardBody>
+                    {!readOnly && !goalStartOn(g, date) && !goalDone(g) && (
+                      <ScheduleButton rec={g} onSchedule={schedule} />
                     )}
-                  </span>
-                </CardBody>
-                {!readOnly && !taskStartOn(t, date) && !t.doneOn && <ScheduleButton rec={t} onSchedule={schedule} />}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      {maybe.length > 0 && (
-        <section>
-          <h3>Maybe today</h3>
-          <ul className="list">
-            {maybe.map((f) => (
-              <li key={f.id} className="card kind-fun">
-                <CardBody readOnly={readOnly} onClick={() => onEdit(f)}>
-                  <span className="title">{f.title}</span>
-                </CardBody>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {tasks.length > 0 && (
+            <section>
+              <h3>Assignments</h3>
+              <ul className="list">
+                {tasks.map((t) => (
+                  <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
+                    <button
+                      className="check"
+                      role="checkbox"
+                      aria-checked={!!t.doneOn}
+                      aria-label={`${t.title} done`}
+                      aria-disabled={readOnly || undefined}
+                      onClick={() => !readOnly && onToggleTask(t)}
+                    />
+                    <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
+                      <span className="title">{t.title}</span>
+                      <span className="meta">
+                        {formatDuration(t.minutes)}
+                        {taskStartOn(t, date) && ` · ${formatTime(taskStartOn(t, date)!)}`}
+                        {!t.doneOn && t.date < date && ' · from earlier'}
+                        {t.due && !t.doneOn && (
+                          <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
+                        )}
+                      </span>
+                    </CardBody>
+                    {!readOnly && !taskStartOn(t, date) && !t.doneOn && (
+                      <ScheduleButton rec={t} onSchedule={schedule} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {maybe.length > 0 && (
+            <section>
+              <h3>Maybe today</h3>
+              <ul className="list">
+                {maybe.map((f) => (
+                  <li key={f.id} className="card kind-fun">
+                    <CardBody readOnly={readOnly} onClick={() => onEdit(f)}>
+                      <span className="title">{f.title}</span>
+                    </CardBody>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </>
   )

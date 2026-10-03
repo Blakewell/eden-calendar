@@ -38,23 +38,35 @@ Times that aren't on a 10-minute mark (such as school at 7:45) still work and ar
 
 ## Screens and navigation
 
-A **menu** button (☰, top right) opens a small sheet:
+The layout is a native-app style: a top bar, the page, and tabs along the bottom.
+
+**Top bar**
+- **Whose day** (left): "Your day". Once someone has shared their day with you it becomes a picker ("Your day ▾"), listing your day first, then each accepted share ("Sam's day"). On someone else's day it reads "Sam's day ▾" with a *view only* tag. The app always opens on your own day.
+- **+** (right): adds something. On the Goals tab it opens a new goal directly; elsewhere it asks which kind. It's hidden on someone else's day and on Share my day.
+- **☰ menu** (right): a dot shows when an invite is waiting.
+
+**Tabs** (bottom, fixed; the app opens on Calendar)
+
+| Tab | Page |
+| --- | --- |
+| Calendar | The day: date and summary, then the calendar |
+| To do | The same date and summary, then the checklists: Daily goals, Assignments, Maybe today. The tab shows how many goals and assignments are left (`todoLeft`). |
+| Goals | Add, change or remove goals |
+
+**Menu**
 
 | Item | Page |
 | --- | --- |
-| Today | The day view (default) |
-| Daily goals | Add, change or remove goals |
 | My week | Routines, awake hours, and one-off plans coming up |
 | Share my day | Invite someone to see your day; see who can; days shared with you (signed in only) |
-| *Shared with you* | One entry per accepted share ("Sam's day"), opening it view only |
 | *Appearance* | Auto / Light / Dark (see below) |
-| *Account* | "Signed in as …" and **Sign out** (synced mode); "Saved on this device" (local mode) |
+| *Account* | Photo, name, "Signed in as …" and **Sign out** (synced mode); "Saved on this device" (local mode) |
 
-The current page is marked in the menu. Tapping the backdrop or pressing Escape closes it.
+No tab is current on My week or Share my day. Tapping the menu's backdrop or pressing Escape closes it.
 
 **Appearance** is per device and stored in this browser (`src/lib/theme.ts`), not synced. **Auto** follows the phone's setting. Light or Dark sets `data-theme` on `<html>`, which overrides the system color scheme in `index.css`, and updates the browser's theme color. It's applied before the first paint, so the page never flashes the wrong colors.
 
-### Today (day view)
+### Calendar and To do (the day)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
 2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open assignments), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again.
@@ -62,16 +74,16 @@ The current page is marked in the menu. Tapping the backdrop or pressing Escape 
 
    **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
 4. **Scheduling goals and assignments** (all for that day only):
-   - **One tap:** each Anytime goal and unscheduled assignment in the checklists has a **Schedule** button. It goes into the first free gap long enough for it, starting on a 10-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
+   - **One tap:** each Anytime goal and unscheduled assignment on the To do tab has a **Schedule** button, and tapping it switches to Calendar. It goes into the first free gap long enough for it, starting on a 10-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
    - **Tap an empty spot:** the picker first offers the day's unscheduled goals and assignments ("Fit something in at 3:00 PM"), then "Or add something new" with the four kinds.
    - Once on the calendar it can be dragged like anything else, is checked off as usual, and no longer counts in "to fit in".
    - Its editor offers **Take it off the calendar for this day** (Anytime goals and assignments go back to the checklist) or **Back to its usual time** (timed goals).
 5. **Daily goals** checklist (all goals for the day, showing time when set), **Assignments** checklist, and **Maybe today** (untimed fun).
-6. A floating **+ Add** button asks which kind, then opens the editor.
+6. The **+** in the top bar asks which kind, then opens the editor.
 
 ### Daily goals
 
-All goals, grouped as **Going now**, **Starting later** (start date in the future) and **Finished** (end date passed; dimmed). Each shows length, time or "Anytime", days and date range. Tap one to edit or remove it. **+ Add goal** opens the editor straight on a new goal. With no goals, a short note and an "Add a goal" button.
+All goals, grouped as **Going now**, **Starting later** (start date in the future) and **Finished** (end date passed; dimmed). Each shows length, time or "Anytime", days and date range. Tap one to edit or remove it. The **+** in the top bar opens the editor straight on a new goal. With no goals, a short note and an "Add a goal" button.
 
 ### My week
 
@@ -83,7 +95,7 @@ One person invites another by email to see their day: **view only**, **one-way**
 
 - **Share my day** page: an email field and **Send invite** (catches typos, inviting yourself, and inviting someone twice). **Who can see your day** lists each invite as *Invite sent*, *Can see your day* or *Said no thanks*, with **Cancel** / **Stop sharing**. **Shared with you** lists days you can view (**View**, **Remove**) and invites waiting for an answer.
 - **Notifications:** a new invite shows as a calm alert at the top of your own pages ("Sam wants to share their day with you." with **Accept** / **No thanks**), and the menu button gets a dot (its label says how many). Invites refresh when the app opens, when it comes back into view, and every minute while it's open. They're in-app only: no email or push.
-- **Viewing:** pick "Sam's day" in the menu. A banner reads "Sam's day · view only" with **Back to my day**, and the greeting reads "Sam's day". All pages show their data with nothing to add, edit, drag, schedule or check off. If they stop sharing while you're looking, it goes back to your own day at the next refresh.
+- **Viewing:** pick "Sam's day" in the top-left picker. It reads "Sam's day ▾" with a *view only* tag, and the greeting reads "Sam's day". Pick "Your day" to go back. All pages show their data with nothing to add, edit, drag, schedule or check off. If they stop sharing while you're looking, it goes back to your own day at the next refresh.
 - Either side can end it at any time: the owner with **Stop sharing**, the viewer with **Remove**.
 
 ### Editor
@@ -155,6 +167,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-04:** Bottom tabs (Calendar / To do / Goals) replace scrolling from the calendar down to the checklists. A top-left picker switches between your day and days shared with you (always opening on yours). **+** moves to the top bar, and the color legend moves under Schedule. The menu keeps My week, Share my day, Appearance and account. One-tap Schedule on To do switches to Calendar to show where it went.
 
 - **2026-10-04:** Share your day by invite: view only, one-way, allowlisted people only. In-app invite alerts, a Share my day page, and viewing a shared day from the menu.
 

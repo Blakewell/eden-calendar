@@ -177,23 +177,76 @@ ol {
 
 .topbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  font-size: 0.8rem;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.whose {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.switcher select {
+  appearance: none;
+  min-height: 2.5rem;
+  max-width: 13rem;
+  padding: 0 1.6rem 0 0;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ink);
+  background: none;
+  border: none;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.switcher svg {
+  position: absolute;
+  right: 0.2rem;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.view-only {
+  flex: none;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.add-button {
+  display: grid;
+  place-items: center;
+  flex: none;
 }
 
 .legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0.4rem;
+  gap: 0.25rem 0.75rem;
+  margin: -0.25rem 0 0.75rem;
   color: var(--muted);
+  font-size: 0.8rem;
 }
 
-.legend {
-  column-gap: 0.75rem;
+.empty-todo {
+  margin: 0.5rem 0 2rem;
 }
 
 .legend-item {
@@ -286,13 +339,49 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-.add {
+/* ---------- Tab bar ---------- */
+
+.tabbar {
   position: fixed;
-  left: 50%;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  box-shadow: 0 6px 20px rgb(47 58 53 / 0.2);
-  padding: 0.75rem 1.75rem;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.tabbar button {
+  flex: 1;
+  max-width: 10rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 3rem;
+  padding: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-radius: 12px;
+}
+
+.tabbar button[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tabbar .count {
+  display: inline-block;
+  min-width: 1.2rem;
+  margin-left: 0.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--goal-soft);
+  color: var(--goal);
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 /* ---------- Summary ---------- */
@@ -563,8 +652,7 @@ button.card {
   gap: 1rem;
 }
 
-.empty .primary,
-.add.kind-goal {
+.empty .primary {
   background: var(--c);
 }
 
@@ -583,24 +671,6 @@ button.card {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--surface);
-}
-
-.viewing {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin: -1rem 0 1.5rem;
-  padding: 0.6rem 0.6rem 0.6rem 1rem;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  font-size: 0.9rem;
-}
-
-.viewing .quiet {
-  flex: none;
-  min-height: 2.5rem;
 }
 
 .invite-alerts {

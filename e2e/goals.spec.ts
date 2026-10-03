@@ -7,18 +7,20 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Saturday' })).toBeVisible()
 })
 
-async function openPage(page: Page, name: RegExp) {
-  await page.getByRole('button', { name: 'Menu' }).click()
-  await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name }).click()
-}
+// Calendar, To do and Goals are tabs along the bottom.
+const tab = (page: Page, name: string) =>
+  page
+    .getByRole('navigation', { name: 'Sections' })
+    .getByRole('button', { name: new RegExp(`^${name}`) })
+    .click()
 
 const calendar = (page: Page) => page.getByRole('region', { name: 'Schedule' })
 
 test('add a goal at a time, see it on the calendar, then change and remove it', async ({ page }) => {
-  await openPage(page, /Daily goals/)
+  await tab(page, 'Goals')
   await expect(page.getByText(/Nothing yet/)).toBeVisible()
 
-  await page.getByRole('button', { name: '+ Add goal' }).click()
+  await page.getByRole('button', { name: 'Add goal' }).click()
   const editor = page.getByRole('dialog')
   await editor.getByLabel('What').fill('Piano')
   await editor.getByLabel('Starts').fill('16:00')
@@ -26,7 +28,7 @@ test('add a goal at a time, see it on the calendar, then change and remove it', 
   await editor.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('40 min · 4:00 PM · Every day')).toBeVisible()
 
-  await openPage(page, /Today/)
+  await tab(page, 'Calendar')
   const piano = calendar(page).getByRole('button', { name: /Piano/ })
   await expect(piano).toContainText('4:00 PM – 4:40 PM')
 
@@ -48,13 +50,14 @@ test('add a goal at a time, see it on the calendar, then change and remove it', 
 })
 
 test('goals survive a reload (saved on this device)', async ({ page }) => {
-  await openPage(page, /Daily goals/)
-  await page.getByRole('button', { name: '+ Add goal' }).click()
+  await tab(page, 'Goals')
+  await page.getByRole('button', { name: 'Add goal' }).click()
   await page.getByRole('dialog').getByLabel('What').fill('Reading')
   await page.getByRole('dialog').getByRole('button', { name: 'Anytime' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
 
   await page.reload()
+  await tab(page, 'To do')
   await expect(page.getByText('Reading')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Time today' })).toContainText('30 min to fit in')
 })
@@ -106,4 +109,18 @@ test('appearance: pick dark or light in the menu, and it sticks after a reload',
   await choose('Auto')
   const scheme = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)
   expect(await background()).toBe(scheme ? DARK : LIGHT)
+})
+
+test('the tab bar stays at the bottom of the phone screen and switches views', async ({ page }) => {
+  const bar = page.getByRole('navigation', { name: 'Sections' })
+  const box = (await bar.boundingBox())!
+  expect(Math.round(box.y + box.height)).toBe(812)
+  for (const b of await bar.getByRole('button').all())
+    expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(40)
+
+  await tab(page, 'To do')
+  await expect(page.getByText('Nothing to check off today.')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Schedule' })).toHaveCount(0)
+  await tab(page, 'Calendar')
+  await expect(page.getByRole('region', { name: 'Schedule' })).toBeVisible()
 })

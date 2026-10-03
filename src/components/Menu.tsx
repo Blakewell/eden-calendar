@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { readTheme, saveTheme, type Theme } from '../lib/theme'
 import type { Profile } from '../lib/profile'
-import { ownerLabel } from '../lib/sharing'
 import type { SharingUI } from './Planner'
 
-export type View = 'day' | 'goals' | 'week' | 'share'
+// Calendar, To do and Goals are the tabs; My week and Share my day are in the menu.
+export type View = 'calendar' | 'todo' | 'goals' | 'week' | 'share'
 
 export type Account = Profile & { onSignOut: () => void }
 
@@ -16,11 +16,7 @@ const THEMES: [Theme, string][] = [
 
 const SHARE_ITEM: [View, string, string][] = [['share', 'Share my day', 'Invite someone to see your day']]
 
-const ITEMS: [View, string, string][] = [
-  ['day', 'Today', 'Your day at a glance'],
-  ['goals', 'Daily goals', 'Add, change or remove goals'],
-  ['week', 'My week', 'Routines and awake hours'],
-]
+const ITEMS: [View, string, string][] = [['week', 'My week', 'Routines and awake hours']]
 
 type Props = {
   view: View
@@ -51,20 +47,6 @@ export function Menu({ view, account, sharing, onView, onClose }: Props) {
     >
       <nav aria-label="Pages">
         <ul className="menu-items">
-          {sharing?.viewing && (
-            <li>
-              <button
-                className="menu-item"
-                onClick={() => {
-                  sharing.onViewDay(null)
-                  onClose()
-                }}
-              >
-                <span>Back to my day</span>
-                <span className="muted small">You're viewing {ownerLabel(sharing.viewing)}'s day</span>
-              </button>
-            </li>
-          )}
           {[...ITEMS, ...(sharing && !sharing.viewing ? SHARE_ITEM : [])].map(([v, label, hint]) => (
             <li key={v}>
               <button
@@ -81,31 +63,6 @@ export function Menu({ view, account, sharing, onView, onClose }: Props) {
             </li>
           ))}
         </ul>
-        {sharing && sharing.received.some((s) => s.status === 'accepted') && (
-          <>
-            <p className="menu-label muted small">Shared with you</p>
-            <ul className="menu-items">
-              {sharing.received
-                .filter((s) => s.status === 'accepted')
-                .map((s) => (
-                  <li key={s.id}>
-                    <button
-                      className="menu-item"
-                      aria-current={sharing.viewing?.id === s.id ? 'page' : undefined}
-                      onClick={() => {
-                        sharing.onViewDay(s)
-                        onView('day')
-                        onClose()
-                      }}
-                    >
-                      <span>{ownerLabel(s)}'s day</span>
-                      <span className="muted small">View only</span>
-                    </button>
-                  </li>
-                ))}
-            </ul>
-          </>
-        )}
       </nav>
 
       <div className="menu-theme">

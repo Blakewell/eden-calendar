@@ -234,3 +234,10 @@ export function goalStatus(goal: Goal, today: string): GoalStatus {
   if (goal.from && goal.from > today) return 'upcoming'
   return 'active'
 }
+
+// How many goals and assignments are still to check off on a day (the To do tab's count).
+export function todoLeft(data: Data, date: string, today: string): number {
+  const goals = goalsOn(data.goals, date).filter((g) => !data.checks.has(checkId(g.id, date)))
+  const tasks = tasksOn(data.tasks, date, today).filter((t) => !t.doneOn)
+  return goals.length + tasks.length
+}
