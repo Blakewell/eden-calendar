@@ -16,6 +16,7 @@ import {
   split,
   tasksOn,
   timeline,
+  todoLeft,
   unschedule,
   type Block,
 } from './plan'
@@ -252,6 +253,16 @@ describe('scheduling goals and assignments', () => {
   it('reads assignments saved before scheduling existed as unscheduled', () => {
     const { at: _, ...old } = task()
     expect(split([old as never]).tasks[0].at).toBeNull()
+  })
+})
+
+describe('todoLeft', () => {
+  it('counts goals and assignments still to check off that day', () => {
+    const reading = goal({ title: 'Reading' })
+    const piano = goal({ title: 'Piano', days: [1] }) // not on Saturdays
+    const data = split([reading, piano, task(), task({ doneOn: SAT }), task({ date: FRI }), makeCheck(reading.id, SAT)])
+    expect(todoLeft(data, SAT, SAT)).toBe(2) // two open assignments (one carried over); reading is done
+    expect(todoLeft(data, SUN, SAT)).toBe(1) // just reading
   })
 })
 

@@ -28,13 +28,22 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('one tap schedules a goal into the next free gap, and it stays after a reload', async ({ page }) => {
+  await page
+    .getByRole('navigation', { name: 'Sections' })
+    .getByRole('button', { name: /^To do/ })
+    .click()
   await page.getByRole('button', { name: 'Schedule Reading' }).click()
+  // It switches to the calendar to show where it went.
   await expect(page.getByRole('status')).toContainText('Reading is on at 1:20 PM')
   const calendar = page.getByRole('region', { name: 'Schedule' })
   await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:20 PM – 1:50 PM')
 
   await page.reload()
   await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:20 PM – 1:50 PM')
+  await page
+    .getByRole('navigation', { name: 'Sections' })
+    .getByRole('button', { name: /^To do/ })
+    .click()
   await expect(page.getByRole('button', { name: 'Schedule Reading' })).toHaveCount(0)
 })
 

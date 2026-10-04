@@ -13,9 +13,9 @@ A simple, calm daily schedule for the family, designed first for Eden and built 
 
 The day view is a calendar in **10-minute chunks** showing routines, timed fun and timed goals, with the **free gaps** between them. Anytime goals and assignments have a one-tap **Schedule** button that puts them in the next free gap. Tap an empty spot to put one of them, or something new, there, or hold and drag a goal or fun plan to move it (routines stay put; a goal moves for that day only). It also shows how much goal and assignment time is left against the free time she has.
 
-The **menu** (☰) moves between **Today**, **Daily goals** (add, change and remove goals) and **My week** (routines and separate wake and sleep times for weekdays and weekends), and has **Share my day**, **Appearance** (Auto / Light / Dark) and **Sign out**.
+Tabs along the bottom switch between the **Calendar**, a **To do** list (goals, assignments, and "Maybe today" to check off), and **Goals** (add, change and remove goals). The top bar has **+** to add, a picker to switch to a day someone shared with you, and the **menu** (☰) with **My week** (routines and separate wake and sleep times for weekdays and weekends), **Share my day**, **Appearance** (Auto / Light / Dark) and **Sign out**.
 
-**Sharing:** invite another family member by email to see your day (view only). They get an alert in the app to accept or decline, then open "Your name's day" from their menu. Either of you can stop it at any time.
+**Sharing:** invite another family member by email to see your day (view only). They get an alert in the app to accept or decline, then pick "Your name's day" from the picker at the top left. Either of you can stop it at any time.
 
 How it all works is in [docs/DESIGN.md](docs/DESIGN.md).
 

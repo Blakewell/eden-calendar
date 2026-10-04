@@ -55,7 +55,7 @@ describe('Planner day view', () => {
   })
 
   it('shows only what applies today, with color by kind', async () => {
-    await renderPlanner([
+    const { user } = await renderPlanner([
       routine({ title: 'School', days: [1, 2, 3, 4, 5] }),
       routine({ title: 'Soccer game', days: [6], start: '10:00', end: '11:30' }),
       goal({ title: 'Reading', days: [0, 1, 2, 3, 4, 5, 6] }),
@@ -66,8 +66,13 @@ describe('Planner day view', () => {
       fun({ title: 'Movie night?' }),
     ])
 
+    // The calendar has the timed things.
     expect(screen.getByText('Soccer game').closest('.card')).toHaveClass('kind-routine')
     expect(screen.getByText("Maya's house").closest('.card')).toHaveClass('kind-fun')
+    expect(screen.queryByText('School')).not.toBeInTheDocument()
+
+    // To do has the things to check off.
+    await openPage(user, /To do/)
     expect(screen.getByText('Reading').closest('.card')).toHaveClass('kind-goal')
     expect(screen.getByText('Lab write-up').closest('.card')).toHaveClass('kind-task')
     expect(screen.getByText('Movie night?')).toBeInTheDocument()
@@ -84,7 +89,8 @@ describe('Planner day view', () => {
   })
 
   it('carries an unfinished assignment from earlier to today', async () => {
-    await renderPlanner([task({ title: 'Math worksheet', date: FRI })])
+    const { user } = await renderPlanner([task({ title: 'Math worksheet', date: FRI })])
+    await openPage(user, /To do/)
     expect(screen.getByText(/from earlier/)).toBeInTheDocument()
   })
 
@@ -119,6 +125,7 @@ describe('checking things off', () => {
   it('checks a goal off for today only, and can undo it', async () => {
     const reading = goal({ title: 'Reading' })
     const { user, all } = await renderPlanner([reading])
+    await openPage(user, /To do/)
     const box = screen.getByRole('checkbox', { name: 'Reading done' })
 
     await user.click(box)
@@ -132,6 +139,7 @@ describe('checking things off', () => {
 
   it('finishes an assignment on the day it is checked', async () => {
     const { user, all } = await renderPlanner([task({ title: 'Lab', date: FRI })])
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Lab done' }))
     expect(all()[0]).toMatchObject({ kind: 'task', doneOn: SAT })
   })
@@ -140,7 +148,7 @@ describe('checking things off', () => {
 describe('adding and editing', () => {
   it('adds a weekday goal with the stepper and presets', async () => {
     const { user, all } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
     await user.click(screen.getByRole('button', { name: /Daily goal/ }))
 
     const dialog = screen.getByRole('dialog')
@@ -157,7 +165,7 @@ describe('adding and editing', () => {
 
   it('adds an assignment planned for today with a due date', async () => {
     const { user, all } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
     await user.click(screen.getByRole('button', { name: /Assignment/ }))
 
     const dialog = screen.getByRole('dialog')
@@ -166,6 +174,7 @@ describe('adding and editing', () => {
     await user.type(within(dialog).getByLabelText(/Due/), MON)
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
+    await openPage(user, /To do/)
     expect(await screen.findByText('Essay draft')).toBeInTheDocument()
     expect(all()[0]).toMatchObject({ kind: 'task', minutes: 50, date: SAT, due: MON, doneOn: null })
     expect(screen.getByText(/due Mon/)).toBeInTheDocument()
@@ -173,11 +182,12 @@ describe('adding and editing', () => {
 
   it('adds a "sometime" fun plan that shows under Maybe today', async () => {
     const { user } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
     await user.click(screen.getByRole('button', { name: /Fun/ }))
     const dialog = screen.getByRole('dialog')
     await user.type(within(dialog).getByLabelText('What'), "Friend's house")
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await openPage(user, /To do/)
 
     expect(await screen.findByRole('heading', { name: 'Maybe today' })).toBeInTheDocument()
     expect(screen.getByText("Friend's house")).toBeInTheDocument()
@@ -185,6 +195,7 @@ describe('adding and editing', () => {
 
   it('edits and removes an existing item', async () => {
     const { user, all } = await renderPlanner([goal({ title: 'Reading', minutes: 30 })])
+    await openPage(user, /To do/)
     await user.click(screen.getByText('Reading'))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByLabelText('What')).toHaveValue('Reading')
@@ -201,6 +212,7 @@ describe('adding and editing', () => {
   it('removing a goal also removes its check-offs', async () => {
     const reading = goal({ title: 'Reading' })
     const { user, all } = await renderPlanner([reading])
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Reading done' }))
     await user.click(screen.getByText('Reading'))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }))
@@ -209,15 +221,27 @@ describe('adding and editing', () => {
 
   it('does not save without a title', async () => {
     const { user, store } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
     await user.click(screen.getByRole('button', { name: /Assignment/ }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
     expect(store.put).not.toHaveBeenCalled()
   })
 })
 
+// Calendar, To do and Goals are tabs; My week and Share my day are in the menu.
 async function openPage(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
-  await user.click(screen.getByRole('button', { name: 'Menu' }))
+  const tab = /Today|Calendar/.test(name.source)
+    ? 'Calendar'
+    : /To do/.test(name.source)
+      ? 'To do'
+      : /goals/i.test(name.source)
+        ? 'Goals'
+        : null
+  if (tab) {
+    const tabs = within(screen.getByRole('navigation', { name: 'Sections' }))
+    return user.click(tabs.getByRole('button', { name: new RegExp(`^${tab}`) }))
+  }
+  await user.click(screen.getByRole('button', { name: /^Menu/ }))
   await user.click(within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', { name }))
 }
 
@@ -236,14 +260,16 @@ describe('the day calendar', () => {
 
   it('shows a timed goal as done on the calendar once it is checked off', async () => {
     const { user } = await renderPlanner([goal({ title: 'Piano', start: '16:00' })])
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Piano done' }))
+    await openPage(user, /Calendar/)
     const calendar = screen.getByRole('region', { name: 'Schedule' })
     expect(within(calendar).getByText('Piano').closest('.card')).toHaveClass('done')
   })
 
   it('adds a goal at a set time from the editor', async () => {
     const { user, all } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
     await user.click(screen.getByRole('button', { name: /Daily goal/ }))
     const dialog = screen.getByRole('dialog')
     await user.type(within(dialog).getByLabelText('What'), 'Piano')
@@ -285,11 +311,15 @@ describe('scheduling goals and assignments', () => {
     ])
     expect(screen.getByRole('region', { name: 'Time today' })).toHaveTextContent('30 min to fit in')
 
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('button', { name: 'Schedule Reading' }))
+    // It switches to the calendar to show where it went.
+    expect(screen.getByRole('button', { name: /^Calendar/ })).toHaveAttribute('aria-current', 'page')
     // It's 1:15 PM and lunch runs until 2, so the next free gap starts at 2.
     expect(screen.getByRole('status')).toHaveTextContent('Reading is on at 2:00 PM')
     expect(calendar().getByText('Reading').closest('.card')).toHaveClass('kind-goal')
     expect(screen.getByRole('region', { name: 'Time today' })).toHaveTextContent('Nothing left to fit in')
+    await openPage(user, /To do/)
     expect(screen.queryByRole('button', { name: 'Schedule Reading' })).not.toBeInTheDocument()
     await waitFor(() =>
       expect(all().find((r) => r.kind === 'goal')).toMatchObject({ start: null, moved: { [SAT]: '14:00' } }),
@@ -302,11 +332,14 @@ describe('scheduling goals and assignments', () => {
 
   it('one tap schedules an assignment too, and checking it off shows it done on the calendar', async () => {
     const { user, all } = await renderPlanner([task({ title: 'Lab write-up', minutes: 50 })])
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('button', { name: 'Schedule Lab write-up' }))
     await waitFor(() => expect(all()[0]).toMatchObject({ at: { date: SAT, start: '13:20' } }))
     expect(calendar().getByText('Lab write-up')).toBeInTheDocument()
 
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Lab write-up done' }))
+    await openPage(user, /Calendar/)
     expect(calendar().getByText('Lab write-up').closest('.card')).toHaveClass('done')
   })
 
@@ -315,8 +348,11 @@ describe('scheduling goals and assignments', () => {
       routine({ title: 'Tournament', days: [6], start: '09:00', end: '22:20' }),
       goal({ title: 'Reading', minutes: 30 }),
     ])
+    await openPage(user, /To do/)
     await user.click(screen.getByRole('button', { name: 'Schedule Reading' }))
     expect(screen.getByRole('status')).toHaveTextContent('No free gap long enough for Reading left today')
+    // Nothing moved, so it stays on To do.
+    expect(screen.getByRole('button', { name: /^To do/ })).toHaveAttribute('aria-current', 'page')
     expect(store.put).not.toHaveBeenCalled()
   })
 
@@ -346,6 +382,7 @@ describe('scheduling goals and assignments', () => {
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Take it off the calendar for this day' }),
     )
     await waitFor(() => expect(all()[0]).toMatchObject({ moved: {} }))
+    await openPage(user, /To do/)
     expect(screen.getByRole('button', { name: 'Schedule Reading' })).toBeInTheDocument()
   })
 
@@ -408,21 +445,50 @@ describe('dragging on the calendar', () => {
 })
 
 describe('menu', () => {
-  it('moves between Today, Daily goals and My week, marking the current page', async () => {
-    const { user } = await renderPlanner()
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
-    const menu = screen.getByRole('dialog', { name: 'Menu' })
-    expect(within(menu).getByRole('button', { name: /Today/ })).toHaveAttribute('aria-current', 'page')
+  it('has tabs for Calendar, To do and Goals, and My week in the menu', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' })])
+    const tabs = within(screen.getByRole('navigation', { name: 'Sections' }))
+    // Opens on the calendar; To do shows what's left.
+    expect(tabs.getByRole('button', { name: /^Calendar/ })).toHaveAttribute('aria-current', 'page')
+    expect(tabs.getByRole('button', { name: /^To do/ })).toHaveTextContent('To do2')
 
-    await user.click(within(menu).getByRole('button', { name: /Daily goals/ }))
+    await openPage(user, /To do/)
+    expect(screen.getByRole('heading', { name: 'Daily goals' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Schedule' })).not.toBeInTheDocument()
+    // The date and summary stay at the top of both.
+    expect(screen.getByRole('heading', { level: 1, name: 'Saturday' })).toBeInTheDocument()
+
+    await openPage(user, /Goals/)
     expect(screen.getByRole('heading', { level: 1, name: 'Daily goals' })).toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await openPage(user, /My week/)
     expect(screen.getByRole('heading', { level: 1, name: 'My week' })).toBeInTheDocument()
+    expect(tabs.getAllByRole('button').filter((b) => b.getAttribute('aria-current'))).toEqual([])
 
-    await openPage(user, /Today/)
-    expect(screen.getByRole('heading', { level: 1, name: 'Saturday' })).toBeInTheDocument()
+    await openPage(user, /Calendar/)
+    expect(screen.getByRole('region', { name: 'Schedule' })).toBeInTheDocument()
+  })
+
+  it('the menu no longer lists Today or Daily goals', async () => {
+    const { user } = await renderPlanner()
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    const menu = within(screen.getByRole('dialog', { name: 'Menu' }))
+    expect(menu.queryByRole('button', { name: /Today/ })).not.toBeInTheDocument()
+    expect(menu.queryByRole('button', { name: /Daily goals/ })).not.toBeInTheDocument()
+    expect(menu.getByRole('button', { name: /My week/ })).toBeInTheDocument()
+  })
+
+  it('To do says so when there is nothing to check off', async () => {
+    const { user } = await renderPlanner()
+    await openPage(user, /To do/)
+    expect(screen.getByText('Nothing to check off today.')).toBeInTheDocument()
+  })
+
+  it('the add button adds a goal straight away on the Goals tab', async () => {
+    const { user } = await renderPlanner()
+    await openPage(user, /Goals/)
+    await user.click(screen.getByRole('button', { name: 'Add goal' }))
+    expect(within(screen.getByRole('dialog')).getByText('Daily goal')).toBeInTheDocument()
   })
 
   it('shows who is signed in and signs out', async () => {
@@ -493,7 +559,7 @@ describe('Daily goals page', () => {
     await openPage(user, /Daily goals/)
     expect(screen.getByText(/Nothing yet/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '+ Add goal' }))
+    await user.click(screen.getByRole('button', { name: 'Add goal' }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText('Daily goal')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('What'), 'Sketching')

@@ -143,13 +143,26 @@ describe('Share my day page', () => {
     expect(sharing.remove).toHaveBeenCalledWith('s1')
   })
 
-  it('the menu lists shared days to jump to', async () => {
+  it('the switcher at the top lists your day first, then days shared with you', async () => {
     const sam = share({ status: 'accepted' })
-    const sharing = sharingUI({ received: [sam] })
+    const sharing = sharingUI({ received: [sam, share({ id: 's2', ownerName: 'Pat Lee' })] }) // Pat's is still pending
     const { user } = await renderWith(sharing)
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
-    await user.click(within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', { name: /Sam's day/ }))
+    const switcher = screen.getByRole('combobox', { name: 'Whose day' })
+    expect(
+      within(switcher)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Your day', "Sam's day"])
+    expect(switcher).toHaveValue('')
+
+    await user.selectOptions(switcher, "Sam's day")
     expect(sharing.onViewDay).toHaveBeenCalledWith(sam)
+  })
+
+  it('is a plain label when nobody has shared with you', async () => {
+    await renderWith(sharingUI())
+    expect(screen.queryByRole('combobox', { name: 'Whose day' })).not.toBeInTheDocument()
+    expect(screen.getByText('Your day')).toBeInTheDocument()
   })
 })
 
@@ -160,6 +173,12 @@ describe("viewing someone else's day", () => {
     goal({ title: 'Reading' }),
     task({ title: 'Essay' }),
   ]
+  const tab = (user: ReturnType<typeof userEvent.setup>, name: string) =>
+    user.click(
+      within(screen.getByRole('navigation', { name: 'Sections' })).getByRole('button', {
+        name: new RegExp(`^${name}`),
+      }),
+    )
 
   it('shows their day, view only', async () => {
     const sam = share({ status: 'accepted' })
@@ -167,24 +186,26 @@ describe("viewing someone else's day", () => {
     const { user, store } = await renderWith(sharing, recs)
 
     expect(screen.getByText("Sam's day", { selector: '.greeting' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent("Sam's day · view only")
+    expect(screen.getByRole('combobox', { name: 'Whose day' })).toHaveValue('s1')
+    expect(screen.getByText('view only')).toBeInTheDocument()
     expect(screen.getByText('Soccer')).toBeInTheDocument()
 
-    // Nothing to add, schedule, check off or edit.
-    expect(screen.queryByRole('button', { name: /\+ Add/ })).not.toBeInTheDocument()
+    // Nothing to add, drag, schedule, check off or edit.
+    expect(screen.queryByRole('button', { name: /^Add/ })).not.toBeInTheDocument()
+    await user.click(screen.getByText('Piano', { selector: '.blocks .title' }))
+    await tab(user, 'To do')
     expect(screen.queryByRole('button', { name: /^Schedule/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Reading done' }))
-    await user.click(screen.getByText('Piano', { selector: '.blocks .title' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(store.put).not.toHaveBeenCalled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('goes back to your own day', async () => {
+  it('goes back to your own day from the switcher', async () => {
     const sam = share({ status: 'accepted' })
     const sharing = sharingUI({ received: [sam], viewing: sam })
     const { user } = await renderWith(sharing, recs)
-    await user.click(within(screen.getByRole('status')).getByRole('button', { name: 'Back to my day' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Whose day' }), 'Your day')
     expect(sharing.onViewDay).toHaveBeenCalledWith(null)
   })
 
@@ -192,16 +213,15 @@ describe("viewing someone else's day", () => {
     const sam = share({ status: 'accepted' })
     const { user } = await renderWith(sharingUI({ received: [sam], viewing: sam }), recs)
 
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
-    const menu = within(screen.getByRole('dialog', { name: 'Menu' }))
-    expect(menu.queryByRole('button', { name: /Share my day/ })).not.toBeInTheDocument()
-    await user.click(menu.getByRole('button', { name: /Daily goals/ }))
-    expect(screen.queryByRole('button', { name: '+ Add goal' })).not.toBeInTheDocument()
+    await tab(user, 'Goals')
+    expect(screen.queryByRole('button', { name: 'Add goal' })).not.toBeInTheDocument()
     await user.click(screen.getByText('Reading'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Menu' }))
-    await user.click(within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', { name: /My week/ }))
+    const menu = within(screen.getByRole('dialog', { name: 'Menu' }))
+    expect(menu.queryByRole('button', { name: /Share my day/ })).not.toBeInTheDocument()
+    await user.click(menu.getByRole('button', { name: /My week/ }))
     for (const input of screen.getAllByLabelText('Up at')) expect(input).toBeDisabled()
   })
 })
