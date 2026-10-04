@@ -20,7 +20,7 @@ A calm daily schedule, designed first for Eden (a teen) and used mostly on a pho
 | --- | --- | --- | --- |
 | Routine | blue | Set times on chosen weekdays, or just once (school, band) | Always |
 | Daily goal | sage | Minutes to spend on chosen days, optionally between two dates; checked off per day | When it has a usual start time ("At a time"), or when an Anytime goal is scheduled for that day |
-| Assignment | clay | Flexible work planned for a day, with an estimate and optional due date; unfinished ones carry over to today | When scheduled for that day |
+| Task | clay | Flexible work planned for a day (homework, chores…), with an estimate and optional due date; unfinished ones carry over to today | When scheduled for that day |
 | Fun | rose | Optional plans on a day | When timed; otherwise listed under "Maybe today" |
 
 ## Time: 10-minute chunks, 5-minute steps
@@ -28,7 +28,7 @@ A calm daily schedule, designed first for Eden (a teen) and used mostly on a pho
 The calendar draws 10-minute chunks (`CHUNK` in `src/lib/plan.ts`), but lengths and times move in 5-minute steps (`STEP`), so things like a 15-minute goal fit:
 
 - Each hour on the day calendar is six chunks, drawn as faint lines with a stronger line on the hour.
-- Lengths step by 5 minutes (goals and assignments).
+- Lengths step by 5 minutes (goals and tasks).
 - Time pickers step by 5 minutes. New items default to the next 10-minute mark.
 - Tapping an empty chunk on the calendar starts adding something at that 10-minute mark.
 - Dragging a block snaps it to 5 minutes (half a chunk).
@@ -43,7 +43,7 @@ The layout is a native-app style: a top bar, the page, and tabs along the bottom
 
 **Top bar**
 - **Whose day** (left): "Your day". Once someone has shared their day with you it becomes a picker ("Your day ▾"), listing your day first, then each accepted share ("Sam's day"). On someone else's day it reads "Sam's day ▾" with a *view only* tag. The app always opens on your own day.
-- **+** (right): adds something. On the Goals tab it opens a new goal directly; elsewhere it asks which kind. It's hidden on someone else's day and on Share my day.
+- **+** (right): adds something; it asks which kind. It's hidden on someone else's day and on Share my day.
 - **☰ menu** (right): a dot shows when an invite is waiting.
 
 **Tabs** (bottom, fixed; the app opens on Calendar)
@@ -51,48 +51,56 @@ The layout is a native-app style: a top bar, the page, and tabs along the bottom
 | Tab | Page |
 | --- | --- |
 | Calendar | The day: date and summary, then the calendar |
-| To do | The same date and summary, then the checklists: Daily goals, Assignments, Maybe today. The tab shows how many goals and assignments are left (`todoLeft`). |
-| Goals | Add, change or remove goals |
+| To do | The same date and summary, then the checklists: Daily goals, Tasks, Maybe today. The tab shows how many goals and tasks are left (`todoLeft`). |
+| Plans | Everything that repeats or is coming up, one section per kind |
 
 **Menu**
 
 | Item | Page |
 | --- | --- |
-| My week | Routines, awake hours, and one-off plans coming up |
+| Awake hours | When you get up and go to bed, weekdays and weekends (a setting) |
 | Share my day | Invite someone to see your day; see who can; days shared with you (signed in only) |
 | *Appearance* | Auto / Light / Dark (see below) |
 | *Account* | Photo, name, "Signed in as …" and **Sign out** (synced mode); "Saved on this device" (local mode) |
 
-No tab is current on My week or Share my day. Tapping the menu's backdrop or pressing Escape closes it.
+No tab is current on Awake hours or Share my day. Tapping the menu's backdrop or pressing Escape closes it.
 
 **Appearance** is per device and stored in this browser (`src/lib/theme.ts`), not synced. **Auto** follows the phone's setting. Light or Dark sets `data-theme` on `<html>`, which overrides the system color scheme in `index.css`, and updates the browser's theme color. It's applied before the first paint, so the page never flashes the wrong colors.
 
 ### Calendar and To do (the day)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
-2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open assignments), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
+2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
 3. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
    **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
-4. **Scheduling goals and assignments** (all for that day only):
-   - **One tap:** each Anytime goal and unscheduled assignment on the To do tab has a **Schedule** button, and tapping it switches to Calendar. It goes into the first free gap long enough for it, starting on a 10-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
-   - **Tap an empty spot:** the picker first offers the day's unscheduled goals and assignments ("Fit something in at 3:00 PM"), then "Or add something new" with the four kinds.
+4. **Scheduling goals and tasks** (all for that day only):
+   - **One tap:** each Anytime goal and unscheduled task on the To do tab has a **Schedule** button, and tapping it switches to Calendar. It goes into the first free gap long enough for it, starting on a 5-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
+   - **Tap an empty spot:** the picker first offers the day's unscheduled goals and tasks ("Fit something in at 3:00 PM"), unless that spot has already passed, then "Or add something new" with the four kinds.
    - Once on the calendar it can be dragged like anything else, is checked off as usual, and no longer counts in "to fit in".
-   - Its editor offers **Take it off the calendar for this day** (Anytime goals and assignments go back to the checklist) or **Back to its usual time** (timed goals).
-5. **Daily goals** checklist (all goals for the day, showing time when set), **Assignments** checklist, and **Maybe today** (untimed fun).
+   - **No scheduling into the past:** a goal or task that isn't done can't be put into time that has already passed (`earliestStart`): today it goes from now on, and on a day that's gone it can't be scheduled at all (no Schedule buttons, not offered when tapping a spot, can't be dragged). Dragging it earlier stops at now. Once it's checked off it can be moved anywhere, to show when it really happened. Routines and fun aren't affected, and anything already on the calendar stays where it is.
+   - Its editor offers **Take it off the calendar for this day** (Anytime goals and tasks go back to the checklist) or **Back to its usual time** (timed goals).
+5. **Daily goals** checklist (all goals for the day, showing time when set), **Tasks** checklist, and **Maybe today** (untimed fun).
 6. The **+** in the top bar asks which kind, then opens the editor.
 
-### Daily goals
+### Plans
 
-All goals, grouped as **Going now**, **Starting later** (start date in the future) and **Finished** (end date passed; dimmed). Each shows length, time or "Anytime", days and date range. Tap one to edit or remove it. The **+** in the top bar opens the editor straight on a new goal. With no goals, a short note and an "Add a goal" button.
+Everything that repeats or is coming up, one section per kind in the legend's order, each with its color dot and its own **+ Add** (which opens the editor on that kind). Tap anything to change it.
 
-### My week
+- **Routines:** weekly ones, then **Just once, coming up** (one-offs from today on).
+- **Daily goals:** goals going now; **Starting later** (start date in the future) and **Finished** (end date passed; dimmed) are folded away with a count.
+- **Tasks:** every open task on any day, overdue first, then by the day it's planned for (`openTasks`). Carried-over ones read "from Fri, Oct 2". Tasks done in the last two weeks are folded under **Done lately** (`recentlyDone`).
+- **Fun:** today through the next two weeks (`funAhead`, `PLANS_DAYS`), timed or "sometime".
 
-Awake hours (weekdays and weekends separately; an empty bedtime means midnight), repeating routines, and one-off routines and fun coming up.
+Each section has a short empty line when there's nothing in it. On someone else's day it's view only, with no add buttons.
+
+### Awake hours
+
+In the menu, as a setting: up and bed times for weekdays and weekends separately. An empty bedtime means midnight.
 
 ### Sharing a day
 
-One person invites another by email to see their day: **view only**, **one-way**, and **everything** (routines, goals, assignments, fun). Only people on the allowlist can sign in, so only they can ever see or accept an invite. An invite to any other address does nothing, and the sender isn't told either way.
+One person invites another by email to see their day: **view only**, **one-way**, and **everything** (routines, goals, tasks, fun). Only people on the allowlist can sign in, so only they can ever see or accept an invite. An invite to any other address does nothing, and the sender isn't told either way.
 
 - **Share my day** page: an email field and **Send invite** (catches typos, inviting yourself, and inviting someone twice). **Who can see your day** lists each invite as *Invite sent*, *Can see your day* or *Said no thanks*, with **Cancel** / **Stop sharing**. **Shared with you** lists days you can view (**View**, **Remove**) and invites waiting for an answer.
 - **Notifications:** a new invite shows as a calm alert at the top of your own pages ("Sam wants to share their day with you." with **Accept** / **No thanks**), and the menu button gets a dot (its label says how many). Invites refresh when the app opens, when it comes back into view, and every minute while it's open. They're in-app only: no email or push.
@@ -116,7 +124,7 @@ A flat list of records (`src/lib/types.ts`), stored either in the browser (local
 | `check` | goal id + date (a goal done on a day) |
 | `settings` | awake hours for weekdays and weekends |
 
-New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` and `moved` existed are read as Anytime with no moves, and assignments without `at` as unscheduled (`split` in `plan.ts`). An assignment's `at` is kept when it's edited, unless its planned day changes. When a goal is moved, `moved` entries for past days are dropped. Changing a goal's usual time in the editor clears its `moved` entries.
+New fields go in `data` and must be optional for records saved earlier. Example: goals saved before `start` and `moved` existed are read as Anytime with no moves, and tasks without `at` as unscheduled (`split` in `plan.ts`). A task's `at` is kept when it's edited, unless its planned day changes. When a goal is moved, `moved` entries for past days are dropped. Changing a goal's usual time in the editor clears its `moved` entries.
 
 Dates are local `YYYY-MM-DD` strings and times are `HH:MM`.
 
@@ -125,7 +133,7 @@ Dates are local `YYYY-MM-DD` strings and times are `HH:MM`.
 - Vite, React and TypeScript, with no router or UI library. Plain CSS in `src/index.css`, with colors as tokens for light and dark.
 - `src/lib/plan.ts` holds all the day logic as pure functions: what applies on a date, the calendar's blocks, free time, side-by-side layout, the calendar range and moves (`moveTo`, `goalStartOn`). Components stay thin.
 - `DayCalendar` handles dragging with pointer events. A non-passive `touchmove` listener on the grid stops the page from scrolling only while a drag is active.
-- `Planner` owns the current page, the selected date, the open editor and the menu. Pages are `DayView` (with `DayCalendar`), `Goals` and `WeekSetup`. `Menu` handles navigation and sign-out.
+- `Planner` owns the current page, the selected date, the open editor and the menu. Pages are `DayView` (with `DayCalendar`), `Plans` and `AwakeHours`. `Menu` handles navigation and sign-out.
 - `Store` interface: `localStore` (browser) or `supabaseStore` (synced), chosen by whether the Supabase env vars are set.
 
 ## Environments
@@ -168,6 +176,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-04:** A **Plans** tab replaces Goals: routines, daily goals, tasks (all open ones, on any day) and fun for the next two weeks, each with its own add button. My week is gone; its awake hours are now **Awake hours** in the menu. Assignments are renamed **Tasks** (the stored kind was already `task`). Unfinished goals and tasks can't be scheduled into time that has already passed.
 
 - **2026-10-04:** Lengths, time pickers, dragging and one-tap Schedule move in 5-minute steps (the calendar still draws 10-minute chunks). The summary shows time left until bedtime today; no bedtime means midnight.
 

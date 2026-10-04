@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Saturday' })).toBeVisible()
 })
 
-// Calendar, To do and Goals are tabs along the bottom.
+// Calendar, To do and Plans are tabs along the bottom.
 const tab = (page: Page, name: string) =>
   page
     .getByRole('navigation', { name: 'Sections' })
@@ -17,10 +17,10 @@ const tab = (page: Page, name: string) =>
 const calendar = (page: Page) => page.getByRole('region', { name: 'Schedule' })
 
 test('add a goal at a time, see it on the calendar, then change and remove it', async ({ page }) => {
-  await tab(page, 'Goals')
-  await expect(page.getByText(/Nothing yet/)).toBeVisible()
+  await tab(page, 'Plans')
+  await expect(page.getByRole('region', { name: 'Daily goals' }).getByText(/Nothing yet/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Add goal' }).click()
+  await page.getByRole('button', { name: 'Add daily goal' }).click()
   const editor = page.getByRole('dialog')
   await editor.getByLabel('What').fill('Piano')
   await editor.getByLabel('Starts').fill('16:00')
@@ -47,8 +47,8 @@ test('add a goal at a time, see it on the calendar, then change and remove it', 
 })
 
 test('goals survive a reload (saved on this device)', async ({ page }) => {
-  await tab(page, 'Goals')
-  await page.getByRole('button', { name: 'Add goal' }).click()
+  await tab(page, 'Plans')
+  await page.getByRole('button', { name: 'Add daily goal' }).click()
   await page.getByRole('dialog').getByLabel('What').fill('Reading')
   await page.getByRole('dialog').getByRole('button', { name: 'Anytime' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()

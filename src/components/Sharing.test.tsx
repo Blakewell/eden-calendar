@@ -209,19 +209,19 @@ describe("viewing someone else's day", () => {
     expect(sharing.onViewDay).toHaveBeenCalledWith(null)
   })
 
-  it('their goals and week are view only too, and the menu has no Share my day', async () => {
+  it('their plans and awake hours are view only too, and the menu has no Share my day', async () => {
     const sam = share({ status: 'accepted' })
     const { user } = await renderWith(sharingUI({ received: [sam], viewing: sam }), recs)
 
-    await tab(user, 'Goals')
-    expect(screen.queryByRole('button', { name: 'Add goal' })).not.toBeInTheDocument()
+    await tab(user, 'Plans')
+    expect(screen.queryByRole('button', { name: /^Add/ })).not.toBeInTheDocument()
     await user.click(screen.getByText('Reading'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     const menu = within(screen.getByRole('dialog', { name: 'Menu' }))
     expect(menu.queryByRole('button', { name: /Share my day/ })).not.toBeInTheDocument()
-    await user.click(menu.getByRole('button', { name: /My week/ }))
+    await user.click(menu.getByRole('button', { name: /Awake hours/ }))
     for (const input of screen.getAllByLabelText('Up at')) expect(input).toBeDisabled()
   })
 })

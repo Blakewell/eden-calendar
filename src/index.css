@@ -473,6 +473,71 @@ button.card {
   color: var(--danger);
 }
 
+/* ---------- Plans ---------- */
+
+.plans-section {
+  margin-bottom: 2rem;
+}
+
+.plans-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.plans-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.plans-head .quiet {
+  min-height: 2.5rem;
+}
+
+.plans-sub {
+  margin: 1rem 0 0.5rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.plans-section > .list:empty {
+  display: none;
+}
+
+.fold {
+  margin-top: 0.75rem;
+}
+
+.fold summary {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold summary::after {
+  content: '▾';
+  margin-left: 0.4rem;
+  transition: transform 0.2s;
+}
+
+.fold[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.fold .list {
+  margin-top: 0.25rem;
+}
+
 .now-tag {
   margin-left: 0.5rem;
   padding: 0 0.5rem;

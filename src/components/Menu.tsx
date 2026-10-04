@@ -3,8 +3,8 @@ import { readTheme, saveTheme, type Theme } from '../lib/theme'
 import type { Profile } from '../lib/profile'
 import type { SharingUI } from './Planner'
 
-// Calendar, To do and Goals are the tabs; My week and Share my day are in the menu.
-export type View = 'calendar' | 'todo' | 'goals' | 'week' | 'share'
+// Calendar, To do and Plans are the tabs; Awake hours and Share my day are in the menu.
+export type View = 'calendar' | 'todo' | 'plans' | 'hours' | 'share'
 
 export type Account = Profile & { onSignOut: () => void }
 
@@ -16,7 +16,7 @@ const THEMES: [Theme, string][] = [
 
 const SHARE_ITEM: [View, string, string][] = [['share', 'Share my day', 'Invite someone to see your day']]
 
-const ITEMS: [View, string, string][] = [['week', 'My week', 'Routines and awake hours']]
+const ITEMS: [View, string, string][] = [['hours', 'Awake hours', 'When you get up and go to bed']]
 
 type Props = {
   view: View

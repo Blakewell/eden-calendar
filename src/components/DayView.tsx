@@ -5,6 +5,7 @@ import {
   awakeHours,
   blocksOn,
   checkId,
+  earliestStart,
   findSlot,
   funOn,
   goalStartOn,
@@ -72,13 +73,15 @@ export function DayView({
   const maybe = funOn(data.fun, date).filter((f) => !f.start)
 
   const goalDone = (g: Goal) => data.checks.has(checkId(g.id, date))
+  // Unfinished goals and tasks only go into time that hasn't passed yet.
+  const earliest = earliestStart(date, todayStr, now)
   // Anything with a slot on the calendar is already fitted in.
   const goalLeft = goals.filter((g) => !goalStartOn(g, date) && !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
   const taskLeft = tasks.filter((t) => !t.doneOn && !taskStartOn(t, date)).reduce((n, t) => n + t.minutes, 0)
 
   // One tap: put it in the next free gap that fits (from now, when it's today).
   function schedule(rec: Goal | Task) {
-    const start = findSlot(blocks, hours, rec.minutes, isToday ? now : '00:00')
+    const start = earliest && findSlot(blocks, hours, rec.minutes, earliest)
     if (start) {
       onMove(rec, start)
       onScheduled()
@@ -183,6 +186,7 @@ export function DayView({
               free={slots}
               hours={hours}
               now={isToday ? now : null}
+              earliest={earliest}
               isDone={(rec) => (rec.kind === 'goal' && goalDone(rec)) || (rec.kind === 'task' && !!rec.doneOn)}
               onEdit={onEdit}
               onAddAt={onAddAt}
@@ -218,7 +222,7 @@ export function DayView({
                         {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
                       </span>
                     </CardBody>
-                    {!readOnly && !goalStartOn(g, date) && !goalDone(g) && (
+                    {!readOnly && earliest && !goalStartOn(g, date) && !goalDone(g) && (
                       <ScheduleButton rec={g} onSchedule={schedule} />
                     )}
                   </li>
@@ -229,7 +233,7 @@ export function DayView({
 
           {tasks.length > 0 && (
             <section>
-              <h3>Assignments</h3>
+              <h3>Tasks</h3>
               <ul className="list">
                 {tasks.map((t) => (
                   <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
@@ -252,7 +256,7 @@ export function DayView({
                         )}
                       </span>
                     </CardBody>
-                    {!readOnly && !taskStartOn(t, date) && !t.doneOn && (
+                    {!readOnly && earliest && !taskStartOn(t, date) && !t.doneOn && (
                       <ScheduleButton rec={t} onSchedule={schedule} />
                     )}
                   </li>
