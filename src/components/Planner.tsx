@@ -3,6 +3,7 @@ import type { EditableKind, Goal, Store, Task } from '../lib/types'
 import {
   CHUNK,
   checkId,
+  earliestStart,
   goalStartOn,
   goalsOn,
   makeCheck,
@@ -18,8 +19,8 @@ import { DayView } from './DayView'
 import { PersonSwitcher } from './PersonSwitcher'
 import { TabBar } from './TabBar'
 import { Editor, type Editable } from './Editor'
-import { WeekSetup } from './WeekSetup'
-import { Goals } from './Goals'
+import { AwakeHours } from './AwakeHours'
+import { Plans } from './Plans'
 import { Menu, type Account, type View } from './Menu'
 import { InviteAlerts, SharePage } from './SharePage'
 import type { Share } from '../lib/sharing'
@@ -60,7 +61,9 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
     put({ ...task, doneOn: task.doneOn ? null : date })
   }
 
-  // Goals and assignments for the day that are still waiting for a time.
+  // Goals and tasks for the day that are still waiting for a time. They're
+  // offered when tapping an empty spot, but not one in time that's gone.
+  const earliest = earliestStart(date, today(), nowHHMM())
   const unscheduled: (Goal | Task)[] = [
     ...goalsOn(data.goals, date).filter((g) => !goalStartOn(g, date) && !data.checks.has(checkId(g.id, date))),
     ...tasksOn(data.tasks, date, today()).filter((t) => !t.doneOn && !taskStartOn(t, date)),
@@ -81,11 +84,7 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
         <PersonSwitcher sharing={sharing} />
         <span className="spacer" />
         {!readOnly && view !== 'share' && (
-          <button
-            className="quiet round add-button"
-            aria-label={view === 'goals' ? 'Add goal' : 'Add'}
-            onClick={() => setEditor({ record: null, newKind: view === 'goals' ? 'goal' : undefined })}
-          >
+          <button className="quiet round add-button" aria-label="Add" onClick={() => setEditor({ record: null })}>
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
@@ -111,12 +110,12 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
         <SharePage sharing={sharing} />
       ) : (
         loaded &&
-        (view === 'goals' ? (
-          <Goals
+        (view === 'plans' ? (
+          <Plans
             data={data}
             readOnly={readOnly}
             onEdit={(record) => edit({ record })}
-            onAdd={() => edit({ record: null, newKind: 'goal' })}
+            onAdd={(newKind) => edit({ record: null, newKind })}
           />
         ) : view === 'calendar' || view === 'todo' ? (
           <DayView
@@ -134,7 +133,7 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
             onToggleTask={toggleTask}
           />
         ) : (
-          <WeekSetup data={data} readOnly={readOnly} onEdit={(record) => edit({ record })} onSettings={put} />
+          <AwakeHours settings={data.settings} readOnly={readOnly} onSettings={put} />
         ))
       )}
 
@@ -151,7 +150,9 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
           defaultStart={editor.start ?? (date === today() ? roundUp(nowHHMM(), CHUNK) : '15:00')}
           record={editor.record}
           newKind={editor.newKind}
-          candidates={editor.start && !editor.record ? unscheduled : []}
+          candidates={
+            editor.start && !editor.record && earliest !== null && editor.start >= earliest ? unscheduled : []
+          }
           onPlace={(c) => {
             setEditor(null)
             put(moveTo(c, date, editor.start!, today()))

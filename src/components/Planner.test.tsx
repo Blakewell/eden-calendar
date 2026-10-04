@@ -103,7 +103,7 @@ describe('Planner day view', () => {
     expect(screen.getByText('now')).toBeInTheDocument()
   })
 
-  it('carries an unfinished assignment from earlier to today', async () => {
+  it('carries an unfinished task from earlier to today', async () => {
     const { user } = await renderPlanner([task({ title: 'Math worksheet', date: FRI })])
     await openPage(user, /To do/)
     expect(screen.getByText(/from earlier/)).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('checking things off', () => {
     expect(all().some((r) => r.kind === 'check')).toBe(false)
   })
 
-  it('finishes an assignment on the day it is checked', async () => {
+  it('finishes a task on the day it is checked', async () => {
     const { user, all } = await renderPlanner([task({ title: 'Lab', date: FRI })])
     await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Lab done' }))
@@ -179,10 +179,10 @@ describe('adding and editing', () => {
     expect(screen.queryByText('Duolingo')).not.toBeInTheDocument()
   })
 
-  it('adds an assignment planned for today with a due date', async () => {
+  it('adds a task planned for today with a due date', async () => {
     const { user, all } = await renderPlanner()
     await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: /Assignment/ }))
+    await user.click(screen.getByRole('button', { name: /^Task/ }))
 
     const dialog = screen.getByRole('dialog')
     await user.type(within(dialog).getByLabelText('What'), 'Essay draft')
@@ -238,20 +238,20 @@ describe('adding and editing', () => {
   it('does not save without a title', async () => {
     const { user, store } = await renderPlanner()
     await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: /Assignment/ }))
+    await user.click(screen.getByRole('button', { name: /^Task/ }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
     expect(store.put).not.toHaveBeenCalled()
   })
 })
 
-// Calendar, To do and Goals are tabs; My week and Share my day are in the menu.
+// Calendar, To do and Plans are tabs; Awake hours and Share my day are in the menu.
 async function openPage(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
   const tab = /Today|Calendar/.test(name.source)
     ? 'Calendar'
     : /To do/.test(name.source)
       ? 'To do'
-      : /goals/i.test(name.source)
-        ? 'Goals'
+      : /Plans/.test(name.source)
+        ? 'Plans'
         : null
   if (tab) {
     const tabs = within(screen.getByRole('navigation', { name: 'Sections' }))
@@ -317,7 +317,7 @@ describe('the day calendar', () => {
   })
 })
 
-describe('scheduling goals and assignments', () => {
+describe('scheduling goals and tasks', () => {
   const calendar = () => within(screen.getByRole('region', { name: 'Schedule' }))
 
   it('one tap puts an anytime goal in the next free gap today, for today only', async () => {
@@ -346,7 +346,7 @@ describe('scheduling goals and assignments', () => {
     expect(screen.getByRole('button', { name: 'Schedule Reading' })).toBeInTheDocument()
   })
 
-  it('one tap schedules an assignment too, and checking it off shows it done on the calendar', async () => {
+  it('one tap schedules a task too, and checking it off shows it done on the calendar', async () => {
     const { user, all } = await renderPlanner([task({ title: 'Lab write-up', minutes: 50 })])
     await openPage(user, /To do/)
     await user.click(screen.getByRole('button', { name: 'Schedule Lab write-up' }))
@@ -373,7 +373,7 @@ describe('scheduling goals and assignments', () => {
     expect(store.put).not.toHaveBeenCalled()
   })
 
-  it('tapping an empty spot offers the day’s unscheduled goals and assignments first', async () => {
+  it('tapping an empty spot offers the day’s unscheduled goals and tasks first', async () => {
     const { user, all } = await renderPlanner([
       goal({ title: 'Reading', minutes: 30 }),
       goal({ title: 'Piano', start: '16:00' }), // already has a time
@@ -390,6 +390,23 @@ describe('scheduling goals and assignments', () => {
       expect(all().find((r) => r.kind === 'task')).toMatchObject({ at: { date: SAT, start: '15:00' } }),
     )
     expect(calendar().getByText('Essay')).toBeInTheDocument()
+  })
+
+  it('does not offer unfinished goals and tasks for a spot that has already passed', async () => {
+    await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' })])
+    fireEvent.click(document.querySelector('.grid')!, { clientY: 14 * 6 * 2 + 5 }) // 11:00 AM; it's 1:15 PM
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.queryByRole('button', { name: /Reading|Essay/ })).not.toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: /^Routine/ })).toBeInTheDocument() // can still add something new
+  })
+
+  it('has no Schedule buttons on a day that has gone', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay', date: FRI })])
+    await openPage(user, /To do/)
+    expect(screen.getByRole('button', { name: 'Schedule Reading' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+    expect(screen.getByText('Reading')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Schedule/ })).not.toBeInTheDocument()
   })
 
   it('takes a scheduled goal back off the calendar for the day', async () => {
@@ -443,6 +460,28 @@ describe('dragging on the calendar', () => {
     expect(block('Piano')).toHaveTextContent('5:05 PM – 5:20 PM')
   })
 
+  it('keeps an unfinished goal out of time that has passed, stopping at now', async () => {
+    const { all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', minutes: 15 })])
+    drag(block('Piano'), -14 * 6 * 4) // 4 hours earlier would be noon; it's 1:15 PM
+    await waitFor(() => expect(all()[0]).toMatchObject({ moved: { [SAT]: '13:15' } }))
+  })
+
+  it('a finished goal can still be moved earlier, to show when it happened', async () => {
+    const { user, all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', minutes: 15 })])
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Piano done' }))
+    await openPage(user, /Calendar/)
+    drag(block('Piano'), -14 * 6 * 4)
+    await waitFor(() => expect(all().find((r) => r.kind === 'goal')).toMatchObject({ moved: { [SAT]: '12:00' } }))
+  })
+
+  it('does not move unfinished goals on a day that has gone', async () => {
+    const { user, store } = await renderPlanner([goal({ title: 'Piano', start: '16:00' })])
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+    drag(block('Piano'), 14 * 6)
+    expect(store.put).not.toHaveBeenCalled()
+  })
+
   it('moves a fun plan, keeping its length', async () => {
     const { all } = await renderPlanner([fun({ title: "Maya's house", start: '14:00', end: '15:30' })])
     drag(block("Maya's house"), -14 * 6)
@@ -469,7 +508,7 @@ describe('dragging on the calendar', () => {
 })
 
 describe('menu', () => {
-  it('has tabs for Calendar, To do and Goals, and My week in the menu', async () => {
+  it('has tabs for Calendar, To do and Plans, and Awake hours in the menu', async () => {
     const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' })])
     const tabs = within(screen.getByRole('navigation', { name: 'Sections' }))
     // Opens on the calendar; To do shows what's left.
@@ -478,41 +517,36 @@ describe('menu', () => {
 
     await openPage(user, /To do/)
     expect(screen.getByRole('heading', { name: 'Daily goals' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tasks' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Schedule' })).not.toBeInTheDocument()
     // The date and summary stay at the top of both.
     expect(screen.getByRole('heading', { level: 1, name: 'Saturday' })).toBeInTheDocument()
 
-    await openPage(user, /Goals/)
-    expect(screen.getByRole('heading', { level: 1, name: 'Daily goals' })).toBeInTheDocument()
+    await openPage(user, /Plans/)
+    expect(screen.getByRole('heading', { level: 1, name: 'Plans' })).toBeInTheDocument()
 
-    await openPage(user, /My week/)
-    expect(screen.getByRole('heading', { level: 1, name: 'My week' })).toBeInTheDocument()
+    await openPage(user, /Awake hours/)
+    expect(screen.getByRole('heading', { level: 1, name: 'Awake hours' })).toBeInTheDocument()
     expect(tabs.getAllByRole('button').filter((b) => b.getAttribute('aria-current'))).toEqual([])
 
     await openPage(user, /Calendar/)
     expect(screen.getByRole('region', { name: 'Schedule' })).toBeInTheDocument()
   })
 
-  it('the menu no longer lists Today or Daily goals', async () => {
+  it('the menu has Awake hours, and no Today, Daily goals or My week', async () => {
     const { user } = await renderPlanner()
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     const menu = within(screen.getByRole('dialog', { name: 'Menu' }))
     expect(menu.queryByRole('button', { name: /Today/ })).not.toBeInTheDocument()
     expect(menu.queryByRole('button', { name: /Daily goals/ })).not.toBeInTheDocument()
-    expect(menu.getByRole('button', { name: /My week/ })).toBeInTheDocument()
+    expect(menu.queryByRole('button', { name: /My week/ })).not.toBeInTheDocument()
+    expect(menu.getByRole('button', { name: /Awake hours/ })).toBeInTheDocument()
   })
 
   it('To do says so when there is nothing to check off', async () => {
     const { user } = await renderPlanner()
     await openPage(user, /To do/)
     expect(screen.getByText('Nothing to check off today.')).toBeInTheDocument()
-  })
-
-  it('the add button adds a goal straight away on the Goals tab', async () => {
-    const { user } = await renderPlanner()
-    await openPage(user, /Goals/)
-    await user.click(screen.getByRole('button', { name: 'Add goal' }))
-    expect(within(screen.getByRole('dialog')).getByText('Daily goal')).toBeInTheDocument()
   })
 
   it('shows who is signed in and signs out', async () => {
@@ -562,28 +596,99 @@ describe('menu', () => {
   })
 })
 
-describe('Daily goals page', () => {
-  it('groups goals into going now, starting later and finished', async () => {
+describe('Plans page', () => {
+  const section = (name: string) => within(screen.getByRole('region', { name }))
+
+  it('has a section for each kind, in the legend order, each with its own add button', async () => {
+    const { user } = await renderPlanner()
+    await openPage(user, /Plans/)
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent?.trim())
+    expect(headings).toEqual(['Routines', 'Daily goals', 'Tasks', 'Fun'])
+
+    for (const [label, kind] of [
+      ['Add routine', 'Routine'],
+      ['Add daily goal', 'Daily goal'],
+      ['Add task', 'Task'],
+      ['Add fun', 'Fun'],
+    ]) {
+      await user.click(screen.getByRole('button', { name: label }))
+      expect(within(screen.getByRole('dialog')).getByText(kind)).toBeInTheDocument()
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    }
+  })
+
+  it('lists weekly routines, then one-offs coming up', async () => {
+    const { user } = await renderPlanner([
+      routine({ title: 'School' }),
+      routine({ title: 'Band concert', date: '2026-11-20', days: [], start: '18:00', end: '20:00' }),
+      routine({ title: 'Old recital', date: FRI, days: [] }),
+    ])
+    await openPage(user, /Plans/)
+    const routines = section('Routines')
+    expect(routines.getByText('7:45 AM – 3:00 PM · Weekdays')).toBeInTheDocument()
+    expect(routines.getByText('Band concert')).toBeInTheDocument()
+    expect(routines.queryByText('Old recital')).not.toBeInTheDocument()
+  })
+
+  it('groups goals: going now, with starting later and finished folded away', async () => {
     const { user } = await renderPlanner([
       goal({ title: 'Reading' }),
       goal({ title: 'Summer math', from: MON }),
       goal({ title: 'Clarinet', days: [1, 2, 3, 4, 5], until: FRI }),
     ])
-    await openPage(user, /Daily goals/)
-
-    const section = (name: string) => screen.getByRole('heading', { name }).closest('section')!
-    expect(within(section('Going now')).getByText('Reading')).toBeInTheDocument()
-    expect(within(section('Starting later')).getByText('Summer math')).toBeInTheDocument()
-    expect(within(section('Finished')).getByText('Clarinet')).toBeInTheDocument()
-    expect(screen.getByText('30 min · Anytime · Weekdays · until Oct 2')).toBeInTheDocument()
+    await openPage(user, /Plans/)
+    const goals = section('Daily goals')
+    expect(goals.getByText('Reading').closest('details')).toBeNull()
+    expect(goals.getByText('Starting later (1)')).toBeInTheDocument()
+    expect(goals.getByText('Finished (1)')).toBeInTheDocument()
+    expect(goals.getByText('Clarinet').closest('details')).not.toHaveAttribute('open')
+    expect(goals.getByText('30 min · Anytime · Weekdays · until Fri, Oct 2')).toBeInTheDocument()
   })
 
-  it('adds a goal straight from the page, skipping the "what kind" step', async () => {
-    const { user, all } = await renderPlanner()
-    await openPage(user, /Daily goals/)
-    expect(screen.getByText(/Nothing yet/)).toBeInTheDocument()
+  it('lists open tasks on any day, overdue first, with recently done ones folded away', async () => {
+    const { user } = await renderPlanner([
+      task({ title: 'Essay draft', date: MON, due: '2026-10-07' }),
+      task({ title: 'Lab write-up', date: FRI, due: FRI }),
+      task({ title: 'Clean room', date: SAT }),
+      task({ title: 'Book report', date: FRI, doneOn: FRI }),
+      task({ title: 'Old project', date: '2026-09-01', doneOn: '2026-09-02' }),
+    ])
+    await openPage(user, /Plans/)
+    const tasks = section('Tasks')
+    const open = tasks
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('card') && !b.closest('details'))
+      .map((b) => b.querySelector('.title')?.textContent)
+    expect(open).toEqual(['Lab write-up', 'Clean room', 'Essay draft'])
+    expect(tasks.getByText(/overdue/)).toHaveClass('overdue')
+    expect(tasks.getByText(/Mon, Oct 5/)).toBeInTheDocument()
+    expect(tasks.getByText(/from Fri, Oct 2/)).toBeInTheDocument()
+    expect(tasks.getByText('Done lately (1)')).toBeInTheDocument()
+    expect(tasks.getByText('30 min · done Fri, Oct 2')).toBeInTheDocument()
+    expect(tasks.queryByText('Old project')).not.toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Add goal' }))
+  it('shows fun for the next two weeks only', async () => {
+    const { user } = await renderPlanner([
+      fun({ title: "Maya's house", date: SAT, start: '14:00', end: '17:00' }),
+      fun({ title: 'Movie night', date: '2026-10-09', start: null, end: null }),
+      fun({ title: 'Ski trip', date: '2026-10-17' }),
+      fun({ title: 'Last week', date: FRI }),
+    ])
+    await openPage(user, /Plans/)
+    const plans = section('Fun')
+    expect(plans.getByText('Today · 2:00 PM – 5:00 PM')).toBeInTheDocument()
+    expect(plans.getByText(/sometime/)).toBeInTheDocument()
+    expect(plans.queryByText('Ski trip')).not.toBeInTheDocument()
+    expect(plans.queryByText('Last week')).not.toBeInTheDocument()
+  })
+
+  it('adds a goal from its section, skipping the "what kind" step', async () => {
+    const { user, all } = await renderPlanner()
+    await openPage(user, /Plans/)
+    expect(section('Daily goals').getByText(/Nothing yet/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add daily goal' }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText('Daily goal')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('What'), 'Sketching')
@@ -600,12 +705,12 @@ describe('Daily goals page', () => {
         days: [0, 1, 2, 3, 4, 5, 6],
       }),
     )
-    expect(screen.getByText('Sketching')).toBeInTheDocument()
+    expect(section('Daily goals').getByText('Sketching')).toBeInTheDocument()
   })
 
   it('renames, retimes and removes a goal', async () => {
     const { user, all } = await renderPlanner([goal({ title: 'Reading', start: '19:00' })])
-    await openPage(user, /Daily goals/)
+    await openPage(user, /Plans/)
 
     await user.click(screen.getByText('Reading'))
     let dialog = screen.getByRole('dialog')
@@ -619,21 +724,20 @@ describe('Daily goals page', () => {
     dialog = screen.getByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(all()).toEqual([]))
-    expect(screen.getByText(/Nothing yet/)).toBeInTheDocument()
+    expect(section('Daily goals').getByText(/Nothing yet/)).toBeInTheDocument()
   })
 })
 
-describe('My week', () => {
-  it('lists repeating routines and saves awake hours', async () => {
-    const { user, all } = await renderPlanner([routine({ title: 'School' })])
-    await openPage(user, /My week/)
+describe('Awake hours', () => {
+  it('saves awake hours, and an empty bedtime', async () => {
+    const { user, all } = await renderPlanner()
+    await openPage(user, /Awake hours/)
 
-    expect(screen.getByText('Weekdays · 7:45 AM – 3:00 PM')).toBeInTheDocument()
-
-    const upAt = screen.getAllByLabelText('Up at')
     // Time inputs don't accept typed text reliably in jsdom; set the value directly.
-    fireEvent.change(upAt[1], { target: { value: '10:00' } })
+    fireEvent.change(screen.getAllByLabelText('Up at')[1], { target: { value: '10:00' } })
     await waitFor(() => expect(all().find((r) => r.kind === 'settings')).toMatchObject({ weekendStart: '10:00' }))
+    fireEvent.change(screen.getAllByLabelText('Bed at')[1], { target: { value: '' } })
+    await waitFor(() => expect(all().find((r) => r.kind === 'settings')).toMatchObject({ weekendEnd: '' }))
   })
 })
 

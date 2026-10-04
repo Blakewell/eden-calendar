@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// Saturday, Oct 3 2026 at 1:15 PM, with an anytime goal and an assignment.
+// Saturday, Oct 3 2026 at 1:15 PM, with an anytime goal and a task.
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-03T13:15:00-05:00'))
   await page.addInitScript(() => {
@@ -49,7 +49,7 @@ test('one tap schedules a goal into the next free gap, and it stays after a relo
   await expect(page.getByRole('button', { name: 'Schedule Reading' })).toHaveCount(0)
 })
 
-test('tap an empty spot and pick the assignment to put there', async ({ page }) => {
+test('tap an empty spot and pick the task to put there', async ({ page }) => {
   const grid = page.locator('.grid')
   await grid.scrollIntoViewIfNeeded()
   const box = (await grid.boundingBox())!

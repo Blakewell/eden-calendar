@@ -25,7 +25,7 @@ export type Goal = {
   until: string | null
 }
 
-// Flexible work (e.g. an assignment) planned for a day, with an estimated
+// Flexible work (homework, chores…) planned for a day, with an estimated
 // time. If it isn't finished, it carries over to today.
 export type Task = {
   kind: 'task'
@@ -88,6 +88,6 @@ export const DEFAULT_SETTINGS: Settings = {
 export const KIND_LABEL: Record<EditableKind, string> = {
   routine: 'Routine',
   goal: 'Daily goal',
-  task: 'Assignment',
+  task: 'Task',
   fun: 'Fun',
 }

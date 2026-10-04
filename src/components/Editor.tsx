@@ -13,10 +13,10 @@ type Props = {
   defaultStart: string
   record: Editable | null // null = adding something new
   newKind?: EditableKind // when adding, skip the "what kind" step
-  // Adding at a tapped time: the day's unscheduled goals and assignments to put there instead.
+  // Adding at a tapped time: the day's unscheduled goals and tasks to put there instead.
   candidates?: (Goal | Task)[]
   onPlace?: (rec: Goal | Task) => void
-  // Set when this goal or assignment is on the calendar for `date` only; takes it back off.
+  // Set when this goal or task is on the calendar for `date` only; takes it back off.
   unscheduleLabel?: string
   onUnschedule?: () => void
   onSave: (rec: Editable) => void
@@ -36,7 +36,7 @@ const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6]
 const HINT: Record<EditableKind, string> = {
   routine: 'Set times, like school or band',
   goal: 'Time to spend every day, like reading',
-  task: 'Flexible work, like an assignment',
+  task: 'Flexible work, like homework or chores',
   fun: "Optional plans, like a friend's house",
 }
 

@@ -3,11 +3,11 @@ import type { View } from './Menu'
 const TABS = [
   { view: 'calendar', label: 'Calendar', icon: 'M5 6h14v13H5zM5 10h14M9 4v4M15 4v4' },
   { view: 'todo', label: 'To do', icon: 'M5 12l4 4 10-10' },
-  { view: 'goals', label: 'Goals', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z' },
+  { view: 'plans', label: 'Plans', icon: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01' },
 ] as const
 
-// The three main places, along the bottom of the screen. My week and Share my
-// day live in the menu, so no tab is current on those pages.
+// The three main places, along the bottom of the screen. Awake hours and Share
+// my day live in the menu, so no tab is current on those pages.
 export function TabBar({ view, todo, onView }: { view: View; todo: number; onView: (view: View) => void }) {
   return (
     <nav className="tabbar" aria-label="Sections">

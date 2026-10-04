@@ -1,6 +1,6 @@
 import type { Check, Fun, Goal, Rec, Routine, Settings, Task } from './types'
 import { DEFAULT_SETTINGS } from './types'
-import { fromMinutes, toMinutes, weekday } from './dates'
+import { addDays, fromMinutes, toMinutes, weekday } from './dates'
 
 export type Data = {
   routines: Routine[]
@@ -46,7 +46,7 @@ export function funOn(fun: Fun[], date: string): Fun[] {
   return fun.filter((f) => f.date === date)
 }
 
-// Assignments show on the day they're planned for. Unfinished ones from
+// Tasks show on the day they're planned for. Unfinished ones from
 // earlier days carry over to today; finished ones show on the day they were done.
 export function tasksOn(tasks: Task[], date: string, today: string): Task[] {
   return tasks
@@ -66,7 +66,7 @@ export function goalStartOn(goal: Goal, date: string): string | null {
   return goal.moved[date] ?? goal.start
 }
 
-// An assignment's start on a given day, if it's been scheduled for that day.
+// A task's start on a given day, if it's been scheduled for that day.
 export function taskStartOn(task: Task, date: string): string | null {
   return task.at?.date === date ? task.at.start : null
 }
@@ -111,6 +111,19 @@ export function findSlot(blocks: Block[], hours: [string, string], minutes: numb
   }
   return null
 }
+// The earliest a goal or task that isn't done yet can be scheduled on `date`:
+// from now on (to the next 5 minutes) today, any time on a later day, and
+// not at all on a day that's gone. Planning work into time that has already
+// passed would only be pretend. Null means it can't be scheduled.
+export function earliestStart(date: string, today: string, now: string): string | null {
+  if (date < today) return null
+  if (date > today) return '00:00'
+  return fromMinutes(Math.min(Math.ceil(toMinutes(now) / STEP) * STEP, DAY))
+}
+
+// Goals and tasks that aren't done can only go from `earliestStart` on.
+export const keepsToFuture = (rec: Block['rec'], done: boolean) => (rec.kind === 'goal' || rec.kind === 'task') && !done
+
 // Short or open-ended blocks still get enough room to tap and read.
 export const MIN_BLOCK = 2 * CHUNK
 
@@ -167,7 +180,7 @@ export type Movable = Goal | Fun | Task
 export const isMovable = (rec: Block['rec']): rec is Movable => rec.kind !== 'routine'
 
 // The record after putting it at `start` on `date` (by dragging or scheduling).
-// Fun keeps its length. A goal or assignment goes there for that day only.
+// Fun keeps its length. A goal or task goes there for that day only.
 // Past days' goal moves are dropped as they no longer matter, and putting a
 // goal back at its usual time clears the exception.
 export function moveTo<T extends Movable>(rec: T, date: string, start: string, today: string): T {
@@ -182,8 +195,8 @@ export function moveTo<T extends Movable>(rec: T, date: string, start: string, t
   return { ...rec, moved }
 }
 
-// Takes a goal or assignment off the calendar for `date`: an anytime goal or
-// assignment goes back to the checklist; a timed goal goes back to its usual time.
+// Takes a goal or task off the calendar for `date`: an anytime goal or
+// task goes back to the checklist; a timed goal goes back to its usual time.
 export function unschedule<T extends Goal | Task>(rec: T, date: string, today: string): T {
   if (rec.kind === 'task') return { ...rec, at: null }
   return { ...rec, moved: pruneMoves(rec.moved, date, today) }
@@ -213,7 +226,7 @@ export function untilBedtime(settings: Settings, date: string, now: string): num
 }
 
 // Timed blocks for the day, with the free gaps between them (within waking
-// hours) so it's easy to see where goals and assignments can fit.
+// hours) so it's easy to see where goals and tasks can fit.
 export function timeline(blocks: Block[], hours: [string, string]): { slots: Slot[]; freeMinutes: number } {
   const dayStart = toMinutes(hours[0])
   const dayEnd = toMinutes(hours[1])
@@ -240,7 +253,7 @@ export function timeline(blocks: Block[], hours: [string, string]): { slots: Slo
   return { slots, freeMinutes }
 }
 
-// Where a goal stands relative to today, for the Goals page.
+// Where a goal stands relative to today, for the Plans page.
 export type GoalStatus = 'active' | 'upcoming' | 'ended'
 
 export function goalStatus(goal: Goal, today: string): GoalStatus {
@@ -249,9 +262,41 @@ export function goalStatus(goal: Goal, today: string): GoalStatus {
   return 'active'
 }
 
-// How many goals and assignments are still to check off on a day (the To do tab's count).
+// How many goals and tasks are still to check off on a day (the To do tab's count).
 export function todoLeft(data: Data, date: string, today: string): number {
   const goals = goalsOn(data.goals, date).filter((g) => !data.checks.has(checkId(g.id, date)))
   const tasks = tasksOn(data.tasks, date, today).filter((t) => !t.doneOn)
   return goals.length + tasks.length
+}
+
+// The Plans tab: everything that repeats or is coming up.
+
+// One-off routines from today on, soonest first.
+export function routinesAhead(routines: Routine[], today: string): Routine[] {
+  return routines
+    .filter((r) => r.date && r.date >= today)
+    .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`))
+}
+
+// Open tasks on any day: overdue first, then by the day they're planned for.
+export function openTasks(tasks: Task[], today: string): Task[] {
+  const key = (t: Task) => `${t.due && t.due < today ? 0 : 1}${t.date}${t.due ?? '~'}`
+  return tasks.filter((t) => !t.doneOn).sort((a, b) => key(a).localeCompare(key(b)))
+}
+
+// How far ahead Plans looks for fun, and back for finished tasks.
+export const PLANS_DAYS = 14
+
+// Tasks finished in the last two weeks, most recent first.
+export function recentlyDone(tasks: Task[], today: string): Task[] {
+  const since = addDays(today, -PLANS_DAYS)
+  return tasks.filter((t) => t.doneOn && t.doneOn >= since).sort((a, b) => b.doneOn!.localeCompare(a.doneOn!))
+}
+
+// Fun from today through the next two weeks, soonest first.
+export function funAhead(fun: Fun[], today: string): Fun[] {
+  const last = addDays(today, PLANS_DAYS - 1)
+  return fun
+    .filter((f) => f.date >= today && f.date <= last)
+    .sort((a, b) => `${a.date}${a.start ?? '~'}`.localeCompare(`${b.date}${b.start ?? '~'}`))
 }

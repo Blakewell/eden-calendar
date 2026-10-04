@@ -8,12 +8,12 @@ A simple, calm daily schedule for the family, designed first for Eden and built 
 | --- | --- | --- | --- |
 | **Routine** | blue | Fixed blocks that repeat on chosen weekdays (or happen just once) | School, band practice |
 | **Daily goal** | sage | Time to spend on chosen days, optionally between a start and end date, and optionally at a set time | Reading 30 min, piano 40 min at 4 PM |
-| **Assignment** | clay | Flexible work planned for a day, with an estimated time and optional due date. Unfinished ones carry over to today | Science lab write-up, 1h, due Mon |
+| **Task** | clay | Flexible work (homework, chores…) planned for a day, with an estimated time and optional due date. Unfinished ones carry over to today | Science lab write-up, 1h, due Mon |
 | **Fun** | rose | Optional plans for a day, at a time or "sometime" | Friend's house, movie night |
 
-The day view is a calendar in **10-minute chunks** (lengths and times move in 5-minute steps) showing routines, timed fun and timed goals, with the **free gaps** between them. Anytime goals and assignments have a one-tap **Schedule** button that puts them in the next free gap. Tap an empty spot to put one of them, or something new, there, or hold and drag a goal or fun plan to move it (routines stay put; a goal moves for that day only). It also shows how much goal and assignment time is left against the free time she has, and how long is left until bedtime.
+The day view is a calendar in **10-minute chunks** (lengths and times move in 5-minute steps) showing routines, timed fun and timed goals, with the **free gaps** between them. Anytime goals and tasks have a one-tap **Schedule** button that puts them in the next free gap. Tap an empty spot to put one of them, or something new, there, or hold and drag a goal or fun plan to move it (routines stay put; a goal moves for that day only). It also shows how much goal and task time is left against the free time she has, and how long is left until bedtime.
 
-Tabs along the bottom switch between the **Calendar**, a **To do** list (goals, assignments, and "Maybe today" to check off), and **Goals** (add, change and remove goals). The top bar has **+** to add, a picker to switch to a day someone shared with you, and the **menu** (☰) with **My week** (routines and separate wake and sleep times for weekdays and weekends), **Share my day**, **Appearance** (Auto / Light / Dark) and **Sign out**.
+Tabs along the bottom switch between the **Calendar**, a **To do** list (goals, tasks, and "Maybe today" to check off), and **Plans** (routines, goals, every open task, and fun for the next two weeks, each with its own add button). The top bar has **+** to add, a picker to switch to a day someone shared with you, and the **menu** (☰) with **Awake hours** (separate wake and sleep times for weekdays and weekends), **Share my day**, **Appearance** (Auto / Light / Dark) and **Sign out**.
 
 **Sharing:** invite another family member by email to see your day (view only). They get an alert in the app to accept or decline, then pick "Your name's day" from the picker at the top left. Either of you can stop it at any time.
 
@@ -37,8 +37,8 @@ npm run test:e2e    # real-browser tests at phone size (Playwright; first run: n
 supabase test db    # database security tests (needs Docker; runs in CI)
 ```
 
-- `src/lib/*.test.ts`: scheduling rules (which routines, goals and assignments show on a day; carry-over; free time; weekend hours)
-- `src/components/Planner.test.tsx`: the app as Eden uses it (adding, editing, checking off, the calendar, the menu, Daily goals, My week)
+- `src/lib/*.test.ts`: scheduling rules (which routines, goals and tasks show on a day; carry-over; free time; weekend hours)
+- `src/components/Planner.test.tsx`: the app as Eden uses it (adding, editing, checking off, the calendar, the menu, Plans, Awake hours)
 - `e2e/`: the same flows in a real browser at 375px, in light and dark mode
 - `supabase/tests/database/`: row-level security (nobody sees anyone else's data; signed-out visitors get nothing) and the invite-only sign-up check
 
@@ -46,7 +46,7 @@ Every pull request runs lint, type checks, unit, component and browser tests, an
 
 ## On her phone
 
-Open the site in Safari (iPhone) or Chrome (Android) and use **Share → Add to Home Screen**. It opens full-screen with its own icon.
+Open the site in Safari (iPhone or iPad) or Chrome (Android) and use **Share → Add to Home Screen**. It opens full-screen with its own icon.
 
 ## Deploy
 

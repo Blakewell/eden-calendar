@@ -9,13 +9,13 @@ A daily schedule web app built by Blake for his family, designed first for Eden 
 - **Four kinds, four colors.** Keep them distinct and consistent everywhere (cards, legend, editor, summary bar), via the `.kind-*` classes and `--routine|goal|task|fun` tokens:
   - **Routine** (blue): fixed blocks repeating on chosen weekdays, or "just once" (school, band).
   - **Daily goal** (sage): minutes on chosen days, optional start/end dates and an optional start time (then it takes a slot on the calendar); checked off per day.
-  - **Assignment** (clay): flexible work planned for a specific day, with an estimate and optional due date; unfinished ones carry over to *today*. Can be scheduled onto the calendar for a day.
+  - **Task** (clay): flexible work (homework, chores…) planned for a specific day, with an estimate and optional due date; unfinished ones carry over to *today*. Can be scheduled onto the calendar for a day.
   - **Fun** (rose): optional plans on a day, timed (on the timeline) or "sometime" ("Maybe today"); never counted as work to fit in.
 - **Weekdays differ from weekends** (separate awake hours; Weekdays / Weekends / Every day presets).
 - **Easy to adjust:** tap anything to edit; −/+ steppers for durations.
 - **10-minute chunks, 5-minute steps:** the day calendar draws each hour as six 10-minute chunks (`CHUNK`), but steppers, time pickers and drags move in 5s (`STEP`), both in `src/lib/plan.ts`.
-- **Layout:** a top bar (a picker for whose day, always opening on your own; then **+** and the ☰ menu), and bottom tabs **Calendar / To do / Goals**. The menu holds My week, Share my day, Appearance (Auto / Light / Dark, per device) and Sign out.
-- **Scheduling:** Anytime goals and assignments get a one-tap **Schedule** (next free gap) and appear first when tapping an empty spot. Always for that day only.
+- **Layout:** a top bar (a picker for whose day, always opening on your own; then **+** and the ☰ menu), and bottom tabs **Calendar / To do / Plans** (Plans: everything that repeats or is coming up, one section per kind). The menu holds Awake hours, Share my day, Appearance (Auto / Light / Dark, per device) and Sign out.
+- **Scheduling:** Anytime goals and tasks get a one-tap **Schedule** (next free gap) and appear first when tapping an empty spot. Always for that day only, and never into time that has already passed unless it's done (`earliestStart`).
 - **Drag to move:** timed goals and fun can be dragged on the calendar (hold first on touch). Routines are fixed. A goal moves for that day only.
 - Light and dark mode both supported; define colors as CSS tokens in `src/index.css` and check both. Dark tokens live in two places (the `prefers-color-scheme` block and `:root[data-theme='dark']`); keep them identical.
 

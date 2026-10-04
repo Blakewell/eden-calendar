@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import type { Block, Movable, Slot } from '../lib/plan'
-import { CHUNK, MIN_BLOCK, STEP, calendarRange, isMovable, placeBlocks } from '../lib/plan'
+import { CHUNK, MIN_BLOCK, STEP, calendarRange, isMovable, keepsToFuture, placeBlocks } from '../lib/plan'
 import { formatDuration, formatTime, fromMinutes, toMinutes } from '../lib/dates'
 import type { Editable } from './Editor'
 
@@ -21,7 +21,8 @@ type Gesture = {
   start: number // minutes
   length: number
   active: boolean
-  shift: number // minutes moved so far, in whole chunks
+  shift: number // minutes moved so far, in 5-minute steps
+  min: number // the furthest back it can go (minutes)
   timer?: number
 }
 
@@ -30,6 +31,7 @@ type Props = {
   free: Slot[]
   hours: [string, string]
   now: string | null // set only when viewing today
+  earliest: string | null // where unfinished goals and tasks can go from (null: a day that's gone)
   isDone: (rec: Editable) => boolean
   onEdit: (rec: Editable) => void
   onAddAt: (start: string) => void
@@ -39,7 +41,18 @@ type Props = {
 
 // The day as a calendar: hours down the side, each split into 10-minute
 // chunks, with blocks placed at their real times and free gaps labelled.
-export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt, onMove, readOnly = false }: Props) {
+export function DayCalendar({
+  blocks,
+  free,
+  hours,
+  now,
+  earliest,
+  isDone,
+  onEdit,
+  onAddAt,
+  onMove,
+  readOnly = false,
+}: Props) {
   const grid = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
   const lastDragEnd = useRef(-Infinity)
@@ -64,6 +77,9 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
 
   function startGesture(e: PointerEvent<HTMLButtonElement>, block: Block) {
     if (readOnly || !isMovable(block.rec) || e.button !== 0) return
+    // Unfinished goals and tasks can't be moved into time that's gone.
+    const limited = keepsToFuture(block.rec, isDone(block.rec))
+    if (limited && earliest === null) return
     const start = toMinutes(block.start)
     const g: Gesture = {
       rec: block.rec,
@@ -75,6 +91,7 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
       length: Math.max(toMinutes(block.end) - start, CHUNK),
       active: false,
       shift: 0,
+      min: limited ? toMinutes(earliest!) : 0,
     }
     gesture.current = g
     if (g.touch) g.timer = window.setTimeout(() => activate(g), HOLD_MS)
@@ -90,9 +107,10 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
       else activate(g)
       return
     }
-    // Snap to 5-minute steps and stay within the day.
+    // Snap to 5-minute steps and stay within the day (and, for unfinished
+    // goals and tasks, out of time that's already gone).
     const stepPx = (CHUNK_PX * STEP) / CHUNK
-    const shift = Math.min(Math.max(Math.round(dy / stepPx) * STEP, -g.start), DAY - g.length - g.start)
+    const shift = Math.min(Math.max(Math.round(dy / stepPx) * STEP, g.min - g.start), DAY - g.length - g.start)
     if (shift !== g.shift) {
       g.shift = shift
       setDrag({ id: g.rec.id, shift })
@@ -160,7 +178,8 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
             const start = toMinutes(block.start) + (dragging ? drag.shift : 0)
             const shownStart = fromMinutes(start)
             const shownEnd = fromMinutes(toMinutes(block.end) + (dragging ? drag.shift : 0))
-            const movable = !readOnly && isMovable(block.rec)
+            const movable =
+              !readOnly && isMovable(block.rec) && !(earliest === null && keepsToFuture(block.rec, isDone(block.rec)))
             const length = Math.max(toMinutes(shownEnd) - start, MIN_BLOCK)
             const isNow = !dragging && nowMin !== null && start <= nowMin && nowMin < toMinutes(shownEnd)
             const short = length < 40

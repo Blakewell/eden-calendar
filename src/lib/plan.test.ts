@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   awakeHours,
+  earliestStart,
   untilBedtime,
   blocksOn,
   calendarRange,
@@ -72,22 +73,22 @@ describe('goalsOn', () => {
   })
 })
 
-describe('tasksOn (assignments)', () => {
+describe('tasksOn', () => {
   const today = SAT
 
-  it('shows an assignment on the day it is planned for', () => {
+  it('shows a task on the day it is planned for', () => {
     const t = task({ date: MON })
     expect(tasksOn([t], MON, today)).toEqual([t])
     expect(tasksOn([t], SUN, today)).toEqual([])
   })
 
-  it('carries unfinished past assignments over to today only', () => {
+  it('carries unfinished past tasks over to today only', () => {
     const late = task({ date: FRI })
     expect(tasksOn([late], today, today)).toEqual([late])
     expect(tasksOn([late], MON, today)).toEqual([])
   })
 
-  it('shows finished assignments only on the day they were finished', () => {
+  it('shows finished tasks only on the day they were finished', () => {
     const done = task({ date: FRI, doneOn: SAT })
     expect(tasksOn([done], SAT, today)).toEqual([done])
     expect(tasksOn([done], FRI, today)).toEqual([])
@@ -247,20 +248,20 @@ describe('moving things on the calendar', () => {
   })
 })
 
-describe('scheduling goals and assignments', () => {
-  it('schedules an assignment on the calendar for one day', () => {
+describe('scheduling goals and tasks', () => {
+  it('schedules a task on the calendar for one day', () => {
     const lab = moveTo(task({ title: 'Lab', minutes: 50, date: SAT }), SAT, '14:00', SAT)
     expect(lab.at).toEqual({ date: SAT, start: '14:00' })
     expect(blocksOn(split([lab]), SAT, SAT)).toEqual([expect.objectContaining({ start: '14:00', end: '14:50' })])
   })
 
-  it('shows a carried-over assignment scheduled today, but not on the earlier day', () => {
+  it('shows a carried-over task scheduled today, but not on the earlier day', () => {
     const late = moveTo(task({ date: FRI }), SAT, '15:00', SAT)
     expect(blocksOn(split([late]), SAT, SAT)).toHaveLength(1)
     expect(blocksOn(split([late]), FRI, SAT)).toHaveLength(0)
   })
 
-  it('unschedules: anytime goals and assignments go back to the checklist, timed goals to their usual time', () => {
+  it('unschedules: anytime goals and tasks go back to the checklist, timed goals to their usual time', () => {
     const reading = goal({ start: null, moved: { [SAT]: '10:00', [MON]: '11:00' } })
     expect(unschedule(reading, SAT, SAT).moved).toEqual({ [MON]: '11:00' })
     expect(unschedule(task({ at: { date: SAT, start: '14:00' } }), SAT, SAT).at).toBeNull()
@@ -268,19 +269,28 @@ describe('scheduling goals and assignments', () => {
     expect(goalStartOn(unschedule(piano, SAT, SAT), SAT)).toBe('16:00')
   })
 
-  it('reads assignments saved before scheduling existed as unscheduled', () => {
+  it('reads tasks saved before scheduling existed as unscheduled', () => {
     const { at: _, ...old } = task()
     expect(split([old as never]).tasks[0].at).toBeNull()
   })
 })
 
 describe('todoLeft', () => {
-  it('counts goals and assignments still to check off that day', () => {
+  it('counts goals and tasks still to check off that day', () => {
     const reading = goal({ title: 'Reading' })
     const piano = goal({ title: 'Piano', days: [1] }) // not on Saturdays
     const data = split([reading, piano, task(), task({ doneOn: SAT }), task({ date: FRI }), makeCheck(reading.id, SAT)])
-    expect(todoLeft(data, SAT, SAT)).toBe(2) // two open assignments (one carried over); reading is done
+    expect(todoLeft(data, SAT, SAT)).toBe(2) // two open tasks (one carried over); reading is done
     expect(todoLeft(data, SUN, SAT)).toBe(1) // just reading
+  })
+})
+
+describe('earliestStart', () => {
+  it('is now (to the next 5 minutes) today, any time later, and never on a day that has gone', () => {
+    expect(earliestStart(SAT, SAT, '13:12')).toBe('13:15')
+    expect(earliestStart(SAT, SAT, '13:15')).toBe('13:15')
+    expect(earliestStart(SUN, SAT, '13:12')).toBe('00:00')
+    expect(earliestStart(FRI, SAT, '13:12')).toBeNull()
   })
 })
 
