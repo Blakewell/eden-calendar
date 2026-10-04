@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { EditableKind, Fun, Goal, Routine, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
 import { formatDuration, formatTime, weekday } from '../lib/dates'
-import { CHUNK } from '../lib/plan'
+import { STEP } from '../lib/plan'
 import { DayPicker } from './DayPicker'
 import { Stepper } from './Stepper'
 
@@ -203,7 +203,7 @@ export function Editor({
                   <span>Starts</span>
                   <input
                     type="time"
-                    step={CHUNK * 60}
+                    step={STEP * 60}
                     value={start}
                     onChange={(e) => setStart(e.target.value)}
                     required
@@ -211,7 +211,7 @@ export function Editor({
                 </label>
                 <label>
                   <span>Ends</span>
-                  <input type="time" step={CHUNK * 60} value={end} onChange={(e) => setEnd(e.target.value)} required />
+                  <input type="time" step={STEP * 60} value={end} onChange={(e) => setEnd(e.target.value)} required />
                 </label>
               </div>
               <div className="field">
@@ -253,7 +253,7 @@ export function Editor({
                       <span>From</span>
                       <input
                         type="time"
-                        step={CHUNK * 60}
+                        step={STEP * 60}
                         value={start}
                         onChange={(e) => setStart(e.target.value)}
                         required
@@ -263,7 +263,7 @@ export function Editor({
                       <span>
                         Until <em>(optional)</em>
                       </span>
-                      <input type="time" step={CHUNK * 60} value={end} onChange={(e) => setEnd(e.target.value)} />
+                      <input type="time" step={STEP * 60} value={end} onChange={(e) => setEnd(e.target.value)} />
                     </label>
                   </div>
                 )}
@@ -274,7 +274,7 @@ export function Editor({
           {(kind === 'goal' || kind === 'task') && (
             <div className="field">
               <span className="field-label">{kind === 'goal' ? 'How long' : 'About how long'}</span>
-              <Stepper minutes={minutes} step={CHUNK} onChange={setMinutes} />
+              <Stepper minutes={minutes} step={STEP} onChange={setMinutes} />
             </div>
           )}
 
@@ -294,7 +294,7 @@ export function Editor({
                   <span>Starts</span>
                   <input
                     type="time"
-                    step={CHUNK * 60}
+                    step={STEP * 60}
                     value={start}
                     onChange={(e) => setStart(e.target.value)}
                     required

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Planner } from './Planner'
 import type { Account } from './Menu'
 import type { Rec, Store } from '../lib/types'
+import { DEFAULT_SETTINGS } from '../lib/types'
 import { FRI, MON, SAT, fun, goal, routine, task } from '../test/fixtures'
 
 // An in-memory store we can inspect.
@@ -52,6 +53,20 @@ describe('Planner day view', () => {
     expect(screen.getByText('Good afternoon')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Saturday' })).toBeInTheDocument()
     expect(screen.getByText('Nothing left to fit in. Enjoy it.')).toBeInTheDocument()
+  })
+
+  it('shows how long until bedtime today, and not on other days', async () => {
+    const { user } = await renderPlanner()
+    // It's 1:15 PM on Saturday; weekend bedtime is 10:30 PM.
+    const summary = screen.getByRole('region', { name: 'Time today' })
+    expect(summary).toHaveTextContent('9h 15m until bedtime (10:30 PM)')
+    await user.click(screen.getByRole('button', { name: 'Next day' }))
+    expect(screen.getByRole('region', { name: 'Time today' })).not.toHaveTextContent('until bedtime')
+  })
+
+  it('counts to midnight when no bedtime is set', async () => {
+    await renderPlanner([{ ...DEFAULT_SETTINGS, weekendEnd: '' }])
+    expect(screen.getByRole('region', { name: 'Time today' })).toHaveTextContent('10h 45m until bedtime (midnight)')
   })
 
   it('shows only what applies today, with color by kind', async () => {
@@ -153,12 +168,13 @@ describe('adding and editing', () => {
 
     const dialog = screen.getByRole('dialog')
     await user.type(within(dialog).getByLabelText('What'), 'Duolingo')
-    await user.click(within(dialog).getByRole('button', { name: '10 minutes less' }))
+    // Lengths move in 5-minute steps: 30 down to 15.
+    for (let i = 0; i < 3; i++) await user.click(within(dialog).getByRole('button', { name: '5 minutes less' }))
     await user.click(within(dialog).getByRole('button', { name: 'Weekdays' }))
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(all()).toHaveLength(1))
-    expect(all()[0]).toMatchObject({ kind: 'goal', title: 'Duolingo', minutes: 20, days: [1, 2, 3, 4, 5] })
+    expect(all()[0]).toMatchObject({ kind: 'goal', title: 'Duolingo', minutes: 15, days: [1, 2, 3, 4, 5] })
     // Saturday: a weekday goal shouldn't show.
     expect(screen.queryByText('Duolingo')).not.toBeInTheDocument()
   })
@@ -170,13 +186,13 @@ describe('adding and editing', () => {
 
     const dialog = screen.getByRole('dialog')
     await user.type(within(dialog).getByLabelText('What'), 'Essay draft')
-    await user.click(within(dialog).getByRole('button', { name: '10 minutes more' }))
+    await user.click(within(dialog).getByRole('button', { name: '5 minutes more' }))
     await user.type(within(dialog).getByLabelText(/Due/), MON)
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await openPage(user, /To do/)
     expect(await screen.findByText('Essay draft')).toBeInTheDocument()
-    expect(all()[0]).toMatchObject({ kind: 'task', minutes: 50, date: SAT, due: MON, doneOn: null })
+    expect(all()[0]).toMatchObject({ kind: 'task', minutes: 45, date: SAT, due: MON, doneOn: null })
     expect(screen.getByText(/due Mon/)).toBeInTheDocument()
   })
 
@@ -200,9 +216,9 @@ describe('adding and editing', () => {
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByLabelText('What')).toHaveValue('Reading')
 
-    await user.click(within(dialog).getByRole('button', { name: '10 minutes more' }))
+    await user.click(within(dialog).getByRole('button', { name: '5 minutes more' }))
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(all()[0]).toMatchObject({ minutes: 40 }))
+    await waitFor(() => expect(all()[0]).toMatchObject({ minutes: 35 }))
 
     await user.click(screen.getByText('Reading'))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }))
@@ -334,7 +350,8 @@ describe('scheduling goals and assignments', () => {
     const { user, all } = await renderPlanner([task({ title: 'Lab write-up', minutes: 50 })])
     await openPage(user, /To do/)
     await user.click(screen.getByRole('button', { name: 'Schedule Lab write-up' }))
-    await waitFor(() => expect(all()[0]).toMatchObject({ at: { date: SAT, start: '13:20' } }))
+    // It's 1:15 PM, already on a 5-minute mark.
+    await waitFor(() => expect(all()[0]).toMatchObject({ at: { date: SAT, start: '13:15' } }))
     expect(calendar().getByText('Lab write-up')).toBeInTheDocument()
 
     await openPage(user, /To do/)
@@ -397,7 +414,7 @@ describe('scheduling goals and assignments', () => {
 })
 
 describe('dragging on the calendar', () => {
-  // Each 10-minute chunk is 14px tall.
+  // Each 10-minute chunk is 14px tall, so 5 minutes is 7px.
   function drag(card: Element, dy: number, pointerType = 'mouse') {
     fireEvent.pointerDown(card, { pointerId: 1, button: 0, clientY: 100, pointerType })
     fireEvent.pointerMove(card, { pointerId: 1, clientY: 100 + dy / 2, pointerType })
@@ -410,13 +427,20 @@ describe('dragging on the calendar', () => {
       .getByText(title)
       .closest('.card')!
 
-  it('moves a goal to a new time for that day only, snapping to 10 minutes', async () => {
+  it('moves a goal to a new time for that day only, snapping to 5 minutes', async () => {
     const { all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', minutes: 40 })])
     drag(block('Piano'), 14 * 6 * 2 + 14 * 2 + 3) // 2 hours, 2 chunks (and a few px)
 
     await waitFor(() => expect(all()[0]).toMatchObject({ start: '16:00', moved: { [SAT]: '18:20' } }))
     expect(block('Piano')).toHaveTextContent('6:20 PM – 7:00 PM')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument() // dragging doesn't open the editor
+  })
+
+  it('snaps a drag to 5 minutes', async () => {
+    const { all } = await renderPlanner([goal({ title: 'Piano', start: '16:00', minutes: 15 })])
+    drag(block('Piano'), 14 * 6 + 7 + 2) // 1 hour 5 minutes (and a few px)
+    await waitFor(() => expect(all()[0]).toMatchObject({ moved: { [SAT]: '17:05' } }))
+    expect(block('Piano')).toHaveTextContent('5:05 PM – 5:20 PM')
   })
 
   it('moves a fun plan, keeping its length', async () => {
@@ -563,7 +587,7 @@ describe('Daily goals page', () => {
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText('Daily goal')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('What'), 'Sketching')
-    await user.click(within(dialog).getByRole('button', { name: '10 minutes more' }))
+    await user.click(within(dialog).getByRole('button', { name: '5 minutes more' }))
     await user.click(within(dialog).getByRole('button', { name: 'Anytime' }))
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
@@ -571,7 +595,7 @@ describe('Daily goals page', () => {
       expect(all()[0]).toMatchObject({
         kind: 'goal',
         title: 'Sketching',
-        minutes: 40,
+        minutes: 35,
         start: null,
         days: [0, 1, 2, 3, 4, 5, 6],
       }),

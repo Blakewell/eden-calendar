@@ -13,7 +13,7 @@ A daily schedule web app built by Blake for his family, designed first for Eden 
   - **Fun** (rose): optional plans on a day, timed (on the timeline) or "sometime" ("Maybe today"); never counted as work to fit in.
 - **Weekdays differ from weekends** (separate awake hours; Weekdays / Weekends / Every day presets).
 - **Easy to adjust:** tap anything to edit; −/+ steppers for durations.
-- **10-minute chunks:** the day calendar splits each hour into six 10-minute chunks; steppers and time pickers move in 10s (`CHUNK` in `src/lib/plan.ts`).
+- **10-minute chunks, 5-minute steps:** the day calendar draws each hour as six 10-minute chunks (`CHUNK`), but steppers, time pickers and drags move in 5s (`STEP`), both in `src/lib/plan.ts`.
 - **Layout:** a top bar (a picker for whose day, always opening on your own; then **+** and the ☰ menu), and bottom tabs **Calendar / To do / Goals**. The menu holds My week, Share my day, Appearance (Auto / Light / Dark, per device) and Sign out.
 - **Scheduling:** Anytime goals and assignments get a one-tap **Schedule** (next free gap) and appear first when tapping an empty spot. Always for that day only.
 - **Drag to move:** timed goals and fun can be dragged on the calendar (hold first on touch). Routines are fixed. A goal moves for that day only.

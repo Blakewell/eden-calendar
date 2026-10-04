@@ -23,18 +23,19 @@ A calm daily schedule, designed first for Eden (a teen) and used mostly on a pho
 | Assignment | clay | Flexible work planned for a day, with an estimate and optional due date; unfinished ones carry over to today | When scheduled for that day |
 | Fun | rose | Optional plans on a day | When timed; otherwise listed under "Maybe today" |
 
-## Time: 10-minute chunks
+## Time: 10-minute chunks, 5-minute steps
 
-The calendar works in 10-minute chunks (`CHUNK` in `src/lib/plan.ts`):
+The calendar draws 10-minute chunks (`CHUNK` in `src/lib/plan.ts`), but lengths and times move in 5-minute steps (`STEP`), so things like a 15-minute goal fit:
 
 - Each hour on the day calendar is six chunks, drawn as faint lines with a stronger line on the hour.
-- Lengths step by 10 minutes (goals and assignments).
-- Time pickers step by 10 minutes, and new items default to the next 10-minute mark.
-- Tapping an empty chunk on the calendar starts adding something at that time.
-- Dragging a block snaps it to 10-minute chunks.
-- Free gaps shorter than one chunk aren't shown.
+- Lengths step by 5 minutes (goals and assignments).
+- Time pickers step by 5 minutes. New items default to the next 10-minute mark.
+- Tapping an empty chunk on the calendar starts adding something at that 10-minute mark.
+- Dragging a block snaps it to 5 minutes (half a chunk).
+- One-tap Schedule starts on a 5-minute mark.
+- Free gaps shorter than 5 minutes aren't shown.
 
-Times that aren't on a 10-minute mark (such as school at 7:45) still work and are drawn at their exact position.
+Times between the lines (such as 2:05 or school at 7:45) are drawn at their exact position.
 
 ## Screens and navigation
 
@@ -69,7 +70,7 @@ No tab is current on My week or Share my day. Tapping the menu's backdrop or pre
 ### Calendar and To do (the day)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
-2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open assignments), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again.
+2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open assignments), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
 3. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
    **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
@@ -87,7 +88,7 @@ All goals, grouped as **Going now**, **Starting later** (start date in the futur
 
 ### My week
 
-Awake hours (weekdays and weekends separately), repeating routines, and one-off routines and fun coming up.
+Awake hours (weekdays and weekends separately; an empty bedtime means midnight), repeating routines, and one-off routines and fun coming up.
 
 ### Sharing a day
 
@@ -167,6 +168,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-04:** Lengths, time pickers, dragging and one-tap Schedule move in 5-minute steps (the calendar still draws 10-minute chunks). The summary shows time left until bedtime today; no bedtime means midnight.
 
 - **2026-10-04:** Bottom tabs (Calendar / To do / Goals) replace scrolling from the calendar down to the checklists. A top-left picker switches between your day and days shared with you (always opening on yours). **+** moves to the top bar, and the color legend moves under Schedule. The menu keeps My week, Share my day, Appearance and account. One-tap Schedule on To do switches to Calendar to show where it went.
 

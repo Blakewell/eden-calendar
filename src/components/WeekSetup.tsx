@@ -32,7 +32,7 @@ export function WeekSetup({ data, onEdit, onSettings, readOnly = false }: Props)
 
       <section>
         <h3>Awake hours</h3>
-        <p className="muted small">Free time is counted between these.</p>
+        <p className="muted small">Free time is counted between these. Leave bedtime empty for midnight.</p>
         {(
           [
             ['Weekdays', 'dayStart', 'dayEnd'],
@@ -57,7 +57,7 @@ export function WeekSetup({ data, onEdit, onSettings, readOnly = false }: Props)
                   type="time"
                   disabled={readOnly}
                   value={settings[endKey]}
-                  onChange={(e) => e.target.value && onSettings({ ...settings, [endKey]: e.target.value })}
+                  onChange={(e) => onSettings({ ...settings, [endKey]: e.target.value })}
                 />
               </label>
             </div>

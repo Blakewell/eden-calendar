@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Data, Movable } from '../lib/plan'
 import {
+  MIDNIGHT,
   awakeHours,
   blocksOn,
   checkId,
@@ -11,6 +12,7 @@ import {
   taskStartOn,
   tasksOn,
   timeline,
+  untilBedtime,
 } from '../lib/plan'
 import type { Goal, Task } from '../lib/types'
 import { KIND_LABEL } from '../lib/types'
@@ -89,6 +91,8 @@ export function DayView({
     })
   }
   const toFit = goalLeft + taskLeft
+  const bedtime = hours[1] === MIDNIGHT ? 'midnight' : formatTime(hours[1])
+  const toBed = untilBedtime(data.settings, date, now)
   const barTotal = Math.max(freeMinutes, toFit, 1)
 
   return (
@@ -141,6 +145,17 @@ export function DayView({
               ? `Fits, with ${formatDuration(freeMinutes - toFit)} to spare.`
               : `That's ${formatDuration(toFit - freeMinutes)} more than your free time. Maybe move something?`}
         </p>
+        {isToday && (
+          <p className="muted small">
+            {toBed > 0 ? (
+              <>
+                <strong>{formatDuration(toBed)}</strong> until bedtime ({bedtime})
+              </>
+            ) : (
+              `Past bedtime (${bedtime}). Sleep well.`
+            )}
+          </p>
+        )}
       </section>
 
       {note?.date === date && (

@@ -94,16 +94,19 @@ export function blocksOn(data: Data, date: string, today: string): Block[] {
 
 // The calendar splits each hour into 10-minute chunks.
 export const CHUNK = 10
+// Lengths, times and drags move in 5-minute steps, so things like a
+// 15-minute goal fit. The calendar still draws 10-minute chunks.
+export const STEP = 5
 const DAY = 24 * 60
 const endAfter = (start: string, minutes: number) => fromMinutes(Math.min(toMinutes(start) + minutes, DAY))
 
 // The first free gap (between blocks, within awake hours, from `after` on)
-// with room for `minutes`, starting on a 10-minute mark. Null if none.
+// with room for `minutes`, starting on a 5-minute mark. Null if none.
 export function findSlot(blocks: Block[], hours: [string, string], minutes: number, after: string): string | null {
-  const earliest = Math.ceil(Math.max(toMinutes(after), toMinutes(hours[0])) / CHUNK) * CHUNK
+  const earliest = Math.ceil(Math.max(toMinutes(after), toMinutes(hours[0])) / STEP) * STEP
   for (const slot of timeline(blocks, hours).slots) {
     if (slot.type !== 'free') continue
-    const start = Math.max(Math.ceil(toMinutes(slot.start) / CHUNK) * CHUNK, earliest)
+    const start = Math.max(Math.ceil(toMinutes(slot.start) / STEP) * STEP, earliest)
     if (start + minutes <= toMinutes(slot.end)) return fromMinutes(start)
   }
   return null
@@ -194,8 +197,19 @@ export function isWeekend(date: string): boolean {
   return wd === 0 || wd === 6
 }
 
+// No bedtime set (or one at/after midnight) means midnight, the end of the day.
+export const MIDNIGHT = '24:00'
+
 export function awakeHours(settings: Settings, date: string): [string, string] {
-  return isWeekend(date) ? [settings.weekendStart, settings.weekendEnd] : [settings.dayStart, settings.dayEnd]
+  const [start, end] = isWeekend(date)
+    ? [settings.weekendStart, settings.weekendEnd]
+    : [settings.dayStart, settings.dayEnd]
+  return [start, end && toMinutes(end) > toMinutes(start) ? end : MIDNIGHT]
+}
+
+// Minutes from `now` until bedtime on `date` (0 once it's past).
+export function untilBedtime(settings: Settings, date: string, now: string): number {
+  return Math.max(0, toMinutes(awakeHours(settings, date)[1]) - toMinutes(now))
 }
 
 // Timed blocks for the day, with the free gaps between them (within waking
@@ -212,7 +226,7 @@ export function timeline(blocks: Block[], hours: [string, string]): { slots: Slo
     const minutes = stop - cursor
     if (minutes <= 0) return
     freeMinutes += minutes
-    if (minutes >= CHUNK) slots.push({ type: 'free', start: fromMinutes(cursor), end: fromMinutes(stop), minutes })
+    if (minutes >= STEP) slots.push({ type: 'free', start: fromMinutes(cursor), end: fromMinutes(stop), minutes })
   }
 
   for (const block of blocks) {
