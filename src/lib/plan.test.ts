@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   awakeHours,
+  untilBedtime,
   blocksOn,
   calendarRange,
   checkId,
@@ -113,6 +114,23 @@ describe('awakeHours', () => {
     expect(awakeHours(s, SAT)).toEqual(['09:00', '23:00'])
     expect(awakeHours(s, SUN)).toEqual(['09:00', '23:00'])
     expect(awakeHours(s, MON)).toEqual(['06:30', '21:30'])
+  })
+
+  it('uses midnight when no bedtime is set, or it is at or after midnight', () => {
+    expect(awakeHours({ ...s, weekendEnd: '' }, SAT)).toEqual(['09:00', '24:00'])
+    expect(awakeHours({ ...s, dayEnd: '00:00' }, MON)).toEqual(['06:30', '24:00'])
+    expect(awakeHours({ ...s, dayEnd: '01:00' }, MON)).toEqual(['06:30', '24:00'])
+  })
+})
+
+describe('untilBedtime', () => {
+  const s: Settings = { ...DEFAULT_SETTINGS, weekendEnd: '22:30' }
+  it('counts the minutes from now until bedtime', () => {
+    expect(untilBedtime(s, SAT, '13:15')).toBe(9 * 60 + 15)
+    expect(untilBedtime({ ...s, weekendEnd: '' }, SAT, '22:45')).toBe(75)
+  })
+  it('is zero once it is past bedtime', () => {
+    expect(untilBedtime(s, SAT, '23:00')).toBe(0)
   })
 })
 
@@ -269,14 +287,16 @@ describe('todoLeft', () => {
 describe('findSlot', () => {
   const hours: [string, string] = ['09:00', '21:00']
 
-  it('finds the first free gap long enough, on a 10-minute mark', () => {
-    const blocks = [block('09:00', '10:00'), block('10:20', '12:00')]
-    expect(findSlot(blocks, hours, 30, '09:00')).toBe('12:00') // the 20-minute gap is too short
+  it('finds the first free gap long enough, on a 5-minute mark', () => {
+    const blocks = [block('09:00', '10:00'), block('10:20', '12:00'), block('12:15', '13:00')]
+    expect(findSlot(blocks, hours, 30, '09:00')).toBe('13:00') // the 20- and 15-minute gaps are too short
     expect(findSlot(blocks, hours, 20, '09:00')).toBe('10:00')
+    expect(findSlot(blocks.slice(1), hours, 15, '12:00')).toBe('12:00')
+    expect(findSlot([block('09:00', '09:15')], hours, 15, '09:00')).toBe('09:15')
   })
 
-  it('starts no earlier than now, rounded up to the next 10 minutes', () => {
-    expect(findSlot([], hours, 30, '13:12')).toBe('13:20')
+  it('starts no earlier than now, rounded up to the next 5 minutes', () => {
+    expect(findSlot([], hours, 30, '13:12')).toBe('13:15')
   })
 
   it('returns null when nothing fits before bedtime', () => {

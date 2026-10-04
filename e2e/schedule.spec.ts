@@ -32,14 +32,16 @@ test('one tap schedules a goal into the next free gap, and it stays after a relo
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('button', { name: /^To do/ })
     .click()
+  // It's 1:15 PM on Saturday; weekend bedtime is 10:30 PM.
+  await expect(page.getByRole('region', { name: 'Time today' })).toContainText('9h 15m until bedtime (10:30 PM)')
   await page.getByRole('button', { name: 'Schedule Reading' }).click()
   // It switches to the calendar to show where it went.
-  await expect(page.getByRole('status')).toContainText('Reading is on at 1:20 PM')
+  await expect(page.getByRole('status')).toContainText('Reading is on at 1:15 PM')
   const calendar = page.getByRole('region', { name: 'Schedule' })
-  await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:20 PM – 1:50 PM')
+  await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:15 PM – 1:45 PM')
 
   await page.reload()
-  await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:20 PM – 1:50 PM')
+  await expect(calendar.getByRole('button', { name: /Reading/ })).toContainText('1:15 PM – 1:45 PM')
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('button', { name: /^To do/ })

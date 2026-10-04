@@ -24,23 +24,20 @@ test('add a goal at a time, see it on the calendar, then change and remove it', 
   const editor = page.getByRole('dialog')
   await editor.getByLabel('What').fill('Piano')
   await editor.getByLabel('Starts').fill('16:00')
-  await editor.getByRole('button', { name: '10 minutes more' }).click()
+  // Lengths move in 5-minute steps: 30 down to 15.
+  for (let i = 0; i < 3; i++) await editor.getByRole('button', { name: '5 minutes less' }).click()
   await editor.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('40 min · 4:00 PM · Every day')).toBeVisible()
+  await expect(page.getByText('15 min · 4:00 PM · Every day')).toBeVisible()
 
   await tab(page, 'Calendar')
   const piano = calendar(page).getByRole('button', { name: /Piano/ })
-  await expect(piano).toContainText('4:00 PM – 4:40 PM')
-
-  // A 40-minute goal is four 10-minute chunks tall.
-  const box = (await piano.boundingBox())!
-  expect(Math.round(box.height)).toBeGreaterThanOrEqual(4 * 14 - 4)
+  await expect(piano).toContainText('4:00 PM – 4:15 PM')
 
   await piano.click()
   await editor.getByLabel('What').fill('Piano scales')
-  await editor.getByLabel('Starts').fill('17:10')
+  await editor.getByLabel('Starts').fill('17:05')
   await editor.getByRole('button', { name: 'Save' }).click()
-  await expect(calendar(page).getByRole('button', { name: /Piano scales/ })).toContainText('5:10 PM – 5:50 PM')
+  await expect(calendar(page).getByRole('button', { name: /Piano scales/ })).toContainText('5:05 PM – 5:20 PM')
 
   await calendar(page)
     .getByRole('button', { name: /Piano scales/ })

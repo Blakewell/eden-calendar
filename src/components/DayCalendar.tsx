@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import type { Block, Movable, Slot } from '../lib/plan'
-import { CHUNK, MIN_BLOCK, calendarRange, isMovable, placeBlocks } from '../lib/plan'
+import { CHUNK, MIN_BLOCK, STEP, calendarRange, isMovable, placeBlocks } from '../lib/plan'
 import { formatDuration, formatTime, fromMinutes, toMinutes } from '../lib/dates'
 import type { Editable } from './Editor'
 
@@ -90,8 +90,9 @@ export function DayCalendar({ blocks, free, hours, now, isDone, onEdit, onAddAt,
       else activate(g)
       return
     }
-    // Snap to whole chunks and stay within the day.
-    const shift = Math.min(Math.max(Math.round(dy / CHUNK_PX) * CHUNK, -g.start), DAY - g.length - g.start)
+    // Snap to 5-minute steps and stay within the day.
+    const stepPx = (CHUNK_PX * STEP) / CHUNK
+    const shift = Math.min(Math.max(Math.round(dy / stepPx) * STEP, -g.start), DAY - g.length - g.start)
     if (shift !== g.shift) {
       g.shift = shift
       setDrag({ id: g.rec.id, shift })
