@@ -9,7 +9,7 @@ A calm daily schedule, designed first for Eden (a teen) and used mostly on a pho
 ## Principles
 
 - **Simple, calm, clean.** Soft colors, whitespace, gentle copy. Red is only for errors and "overdue".
-- **Phone first.** Designed at 375px wide: no sideways scrolling, tap targets at least 40px, text inputs at least 16px. Installable to the home screen.
+- **Phone first.** Designed at 375px wide: no sideways scrolling, tap targets at least 40px, text inputs at least 16px. Installable to the home screen, with a clock icon: school at 12, a dumbbell at 3, a music note at 6 and zzz at 9 on soft color triangles (`public/favicon.svg`; `node scripts/make-icons.mjs` renders the PNGs).
 - **Four kinds, four colors**, used the same way everywhere.
 - **Easy to adjust.** Tap anything to change it; −/+ steppers for lengths.
 - Light and dark mode: follows the phone by default and can be set in the menu.
@@ -176,6 +176,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-04:** New home-screen icon, chosen by Eden: a clock with a school at 12, a dumbbell at 3, a music note at 6 and zzz at 9, on soft color triangles. The browser-tab icon matches.
 
 - **2026-10-04:** A **Plans** tab replaces Goals: routines, daily goals, tasks (all open ones, on any day) and fun for the next two weeks, each with its own add button. My week is gone; its awake hours are now **Awake hours** in the menu. Assignments are renamed **Tasks** (the stored kind was already `task`). Unfinished goals and tasks can't be scheduled into time that has already passed.
 
