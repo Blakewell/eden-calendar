@@ -189,6 +189,43 @@ describe('what is left', () => {
     expect(goals.queryByText(/^Done/)).not.toBeInTheDocument()
   })
 
+  it('fills the bar as things are checked off', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' }), task({ title: 'Lab' })])
+    const summary = within(screen.getByRole('region', { name: 'Time today' }))
+    expect(summary.getByText('0 of 3 done')).toBeInTheDocument()
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    expect(summary.getByText('1 of 3 done')).toBeInTheDocument()
+    expect(document.querySelector('.bar .kind-task')!.getAttribute('style')).toMatch(/width: 33\.3/)
+  })
+
+  it('has no bar on a day with nothing to check off', async () => {
+    await renderPlanner([routine({ title: 'Band', days: [6] })])
+    expect(screen.queryByText(/ done$/)).not.toBeInTheDocument()
+    expect(document.querySelector('.bar')).toBeNull()
+  })
+
+  it('offers Undo right after checking something off', async () => {
+    const reading = goal({ title: 'Reading' })
+    const { user, all } = await renderPlanner([reading, task({ title: 'Essay' })])
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Reading done' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Reading done.')
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Reading done' })).toHaveAttribute('aria-checked', 'false')
+    expect(all().some((r) => r.kind === 'check')).toBe(false)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(all().find((r) => r.kind === 'task')).toMatchObject({ doneOn: null }))
+
+    // Unchecking doesn't need an undo.
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
   it('says so when everything is done', async () => {
     const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' })])
     await openPage(user, /To do/)

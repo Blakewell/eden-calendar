@@ -70,7 +70,7 @@ No tab is current on Awake hours or Share my day. Tapping the menu's backdrop or
 ### Calendar and To do (the day)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
-2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
+2. **Summary:** a progress bar that fills as the day's goals and tasks are checked off, in their colors ("3 of 7 done"; no bar when there's nothing to check off). Then free time against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
 3. **Still to fit in** (Calendar tab only): a chip for each goal and task that isn't done and has no time yet (`toFitIn`), in its kind's color with its length, so what's left is visible without leaving the calendar. Tapping a chip schedules it like the **Schedule** button. Hidden when there's nothing left, and on a day that's gone. View only on someone else's day.
 4. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
@@ -81,7 +81,7 @@ No tab is current on Awake hours or Share my day. Tapping the menu's backdrop or
    - Once on the calendar it can be dragged like anything else, is checked off as usual, and no longer counts in "to fit in".
    - **No scheduling into the past:** a goal or task that isn't done can't be put into time that has already passed (`earliestStart`): today it goes from now on, and on a day that's gone it can't be scheduled at all (no Schedule buttons, not offered when tapping a spot, can't be dragged). Dragging it earlier stops at now. Once it's checked off it can be moved anywhere, to show when it really happened. Routines and fun aren't affected, and anything already on the calendar stays where it is.
    - Its editor offers **Take it off the calendar for this day** (Anytime goals and tasks go back to the checklist) or **Back to its usual time** (timed goals).
-6. **Daily goals** checklist (all goals for the day, showing time when set), **Tasks** checklist, and **Maybe today** (untimed fun). Each checklist shows how many are left beside its heading ("2 left", or "All done"), lists what's left first, and folds finished ones under a closed **Done (n)** that opens to uncheck them. When everything is checked off, a line says so ("All done for today. Nice work.").
+6. **Daily goals** checklist (all goals for the day, showing time when set), **Tasks** checklist, and **Maybe today** (untimed fun). Each checklist shows how many are left beside its heading ("2 left", or "All done"), lists what's left first, and folds finished ones under a closed **Done (n)** that opens to uncheck them. When everything is checked off, a line says so ("All done for today. Nice work."). Right after checking something off, a bar just above the tabs offers **Undo** for 5 seconds ("Reading done."); unchecking needs no undo.
 7. The **+** in the top bar asks which kind, then opens the editor.
 
 ### Plans
@@ -178,7 +178,7 @@ All of these run on every pull request in CI. Unit and component tests freeze ti
 
 ## Change log
 
-- **2026-10-05:** Usability pass on what's left. To do lists what's left first, with a count beside each heading, and folds finished goals and tasks under **Done**. The Calendar tab shows **Still to fit in**: one chip per unscheduled goal or task, tapped to schedule it.
+- **2026-10-05:** Usability pass on what's left. To do lists what's left first, with a count beside each heading, and folds finished goals and tasks under **Done**. The Calendar tab shows **Still to fit in**: one chip per unscheduled goal or task, tapped to schedule it. The summary bar now shows progress (how many goals and tasks are checked off) instead of time to fit in against free time, and checking something off offers **Undo** for a few seconds.
 
 - **2026-10-04:** New home-screen icon, chosen by Eden: a clock with a school at 12, a dumbbell at 3, a music note at 6 and zzz at 9, on soft color triangles. The browser-tab icon matches.
 

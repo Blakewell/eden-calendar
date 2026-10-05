@@ -403,6 +403,10 @@ textarea:focus-visible {
   margin-bottom: 0.75rem;
 }
 
+.progress {
+  margin: -0.4rem 0 0.5rem;
+}
+
 .seg {
   background: var(--c);
   transition: width 0.3s;
@@ -474,6 +478,34 @@ button.card {
 }
 
 /* ---------- To do ---------- */
+
+/* Undo after checking something off, just above the tabs. */
+.toast {
+  position: fixed;
+  inset-inline: 1rem;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: 6;
+  max-width: 528px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.12);
+}
+
+.toast span {
+  overflow-wrap: anywhere;
+}
+
+.toast .quiet {
+  flex: none;
+  min-height: 2.5rem;
+}
 
 .list-head {
   display: flex;

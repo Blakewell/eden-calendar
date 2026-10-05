@@ -25,6 +25,9 @@ import { Fold } from './Plans'
 
 export type DayTab = 'calendar' | 'todo'
 
+// How long the Undo after checking something off stays up.
+export const UNDO_MS = 5000
+
 type Props = {
   data: Data
   date: string
@@ -57,6 +60,13 @@ export function DayView({
   const [now, setNow] = useState(nowHHMM)
   // A short line after tapping Schedule: where it went, or that nothing fits.
   const [note, setNote] = useState<{ text: string; date: string } | null>(null)
+  // After checking something off: a few seconds to undo it.
+  const [undo, setUndo] = useState<{ date: string; kind: 'goal' | 'task'; id: string; title: string } | null>(null)
+  useEffect(() => {
+    if (!undo) return
+    const t = setTimeout(() => setUndo(null), UNDO_MS)
+    return () => clearTimeout(t)
+  }, [undo])
   useEffect(() => {
     const t = setInterval(() => setNow(nowHHMM()), 30_000)
     return () => clearInterval(t)
@@ -79,10 +89,7 @@ export function DayView({
   const earliest = earliestStart(date, todayStr, now)
   // Anything with a slot on the calendar is already fitted in.
   const unscheduled = toFitIn(data, date, todayStr)
-  const minutesOf = (kind: 'goal' | 'task') =>
-    unscheduled.filter((r) => r.kind === kind).reduce((n, r) => n + r.minutes, 0)
-  const goalLeft = minutesOf('goal')
-  const taskLeft = minutesOf('task')
+  const toFit = unscheduled.reduce((n, r) => n + r.minutes, 0)
   // On To do, what's left comes first and finished things fold away.
   const goalsOpen = goals.filter((g) => !goalDone(g))
   const goalsDone = goals.filter(goalDone)
@@ -103,10 +110,26 @@ export function DayView({
         : `No free gap long enough for ${rec.title}${isToday ? ' left today' : ''}. Tap a spot on the calendar to put it there anyway.`,
     })
   }
-  const toFit = goalLeft + taskLeft
   const bedtime = hours[1] === MIDNIGHT ? 'midnight' : formatTime(hours[1])
   const toBed = untilBedtime(data.settings, date, now)
-  const barTotal = Math.max(freeMinutes, toFit, 1)
+  // The bar fills as goals and tasks are checked off.
+  const checklist = goals.length + tasks.length
+
+  // Checking something off folds it away, so offer a moment to take it back.
+  // Undo looks the record up again, so it acts on what's saved now.
+  function toggle(rec: Goal | Task, done: boolean) {
+    if (rec.kind === 'goal') onToggleGoal(rec)
+    else onToggleTask(rec)
+    setUndo(done ? null : { date, kind: rec.kind, id: rec.id, title: rec.title })
+  }
+  function undoDone() {
+    if (!undo) return
+    const goal = undo.kind === 'goal' && data.goals.find((g) => g.id === undo.id)
+    const task = undo.kind === 'task' && data.tasks.find((t) => t.id === undo.id)
+    if (goal && goalDone(goal)) onToggleGoal(goal)
+    if (task && task.doneOn) onToggleTask(task)
+    setUndo(null)
+  }
 
   const goalCard = (g: Goal) => (
     <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
@@ -116,7 +139,7 @@ export function DayView({
         aria-checked={goalDone(g)}
         aria-label={`${g.title} done`}
         aria-disabled={readOnly || undefined}
-        onClick={() => !readOnly && onToggleGoal(g)}
+        onClick={() => !readOnly && toggle(g, goalDone(g))}
       />
       <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
         <span className="title">{g.title}</span>
@@ -138,7 +161,7 @@ export function DayView({
         aria-checked={!!t.doneOn}
         aria-label={`${t.title} done`}
         aria-disabled={readOnly || undefined}
-        onClick={() => !readOnly && onToggleTask(t)}
+        onClick={() => !readOnly && toggle(t, !!t.doneOn)}
       />
       <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
         <span className="title">{t.title}</span>
@@ -183,10 +206,17 @@ export function DayView({
       </header>
 
       <section className="summary" aria-label="Time today">
-        <div className="bar" aria-hidden="true">
-          <span className="seg kind-goal" style={{ width: `${(goalLeft / barTotal) * 100}%` }} />
-          <span className="seg kind-task" style={{ width: `${(taskLeft / barTotal) * 100}%` }} />
-        </div>
+        {checklist > 0 && (
+          <>
+            <div className="bar" aria-hidden="true">
+              <span className="seg kind-goal" style={{ width: `${(goalsDone.length / checklist) * 100}%` }} />
+              <span className="seg kind-task" style={{ width: `${(tasksDone.length / checklist) * 100}%` }} />
+            </div>
+            <p className="muted small progress">
+              {goalsDone.length + tasksDone.length} of {checklist} done
+            </p>
+          </>
+        )}
         <p>
           <strong>{formatDuration(freeMinutes)}</strong> <span className="muted">free</span>
           {toFit > 0 && (
@@ -215,6 +245,15 @@ export function DayView({
           </p>
         )}
       </section>
+
+      {undo?.date === date && (
+        <div className="toast" role="status">
+          <span>{undo.title} done.</span>
+          <button className="quiet" onClick={undoDone}>
+            Undo
+          </button>
+        </div>
+      )}
 
       {note?.date === date && (
         <p className="note muted small" role="status">

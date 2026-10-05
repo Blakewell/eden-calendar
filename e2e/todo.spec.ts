@@ -67,9 +67,25 @@ test('finished goals and tasks fold away under Done, and can be unchecked', asyn
   await reading.click()
   await expect(goals.getByText('2 left')).toBeVisible()
 
+  // Undo sits above the tabs, and goes away by itself.
+  await page.getByRole('checkbox', { name: 'Essay done' }).click()
+  const undo = page.getByRole('button', { name: 'Undo' })
+  const undoBox = (await undo.boundingBox())!
+  const tabsBox = (await page.getByRole('navigation', { name: 'Sections' }).boundingBox())!
+  expect(undoBox.y + undoBox.height).toBeLessThanOrEqual(tabsBox.y)
+  expect(undoBox.height).toBeGreaterThanOrEqual(40)
+  await undo.click()
+  await expect(page.getByRole('checkbox', { name: 'Essay done' })).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('checkbox', { name: 'Essay done' }).click()
+  await expect(undo).toBeHidden({ timeout: 8000 })
+  await page.getByRole('region', { name: 'Tasks' }).getByText('Done (1)').click()
+  await page.getByRole('checkbox', { name: 'Essay done' }).click()
+
+  await expect(page.getByRole('region', { name: 'Time today' })).toContainText('0 of 4 done')
   for (const name of ['Reading', 'Duolingo', 'Essay', 'Clean room']) {
     await page.getByRole('checkbox', { name: `${name} done` }).click()
   }
   await expect(page.getByText('All done for today. Nice work.')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Time today' })).toContainText('4 of 4 done')
   await expect(page.getByRole('button', { name: /^To do/ })).toHaveAccessibleName('To do')
 })
