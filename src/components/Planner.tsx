@@ -1,18 +1,6 @@
 import { useState } from 'react'
 import type { EditableKind, Goal, Store, Task } from '../lib/types'
-import {
-  CHUNK,
-  checkId,
-  earliestStart,
-  goalStartOn,
-  goalsOn,
-  makeCheck,
-  moveTo,
-  taskStartOn,
-  tasksOn,
-  todoLeft,
-  unschedule,
-} from '../lib/plan'
+import { CHUNK, checkId, earliestStart, makeCheck, moveTo, toFitIn, todoLeft, unschedule } from '../lib/plan'
 import { formatTime, nowHHMM, roundUp, today } from '../lib/dates'
 import { useData } from '../lib/useData'
 import { DayView } from './DayView'
@@ -64,10 +52,7 @@ export function Planner({ store, account, sharing }: { store: Store; account?: A
   // Goals and tasks for the day that are still waiting for a time. They're
   // offered when tapping an empty spot, but not one in time that's gone.
   const earliest = earliestStart(date, today(), nowHHMM())
-  const unscheduled: (Goal | Task)[] = [
-    ...goalsOn(data.goals, date).filter((g) => !goalStartOn(g, date) && !data.checks.has(checkId(g.id, date))),
-    ...tasksOn(data.tasks, date, today()).filter((t) => !t.doneOn && !taskStartOn(t, date)),
-  ]
+  const unscheduled = toFitIn(data, date, today())
 
   // Editing something that's on the calendar for this day only: offer to take it back off.
   const rec = editor?.record

@@ -403,6 +403,10 @@ textarea:focus-visible {
   margin-bottom: 0.75rem;
 }
 
+.progress {
+  margin: -0.4rem 0 0.5rem;
+}
+
 .seg {
   background: var(--c);
   transition: width 0.3s;
@@ -471,6 +475,83 @@ button.card {
 
 .overdue {
   color: var(--danger);
+}
+
+/* ---------- To do ---------- */
+
+/* Undo after checking something off, just above the tabs. */
+.toast {
+  position: fixed;
+  inset-inline: 1rem;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: 6;
+  max-width: 528px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.12);
+}
+
+.toast span {
+  overflow-wrap: anywhere;
+}
+
+.toast .quiet {
+  flex: none;
+  min-height: 2.5rem;
+}
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.list-head h3 {
+  margin: 0;
+}
+
+.all-done {
+  margin: 0.5rem 0 1.5rem;
+}
+
+/* Still to fit in, above the calendar: one chip per goal or task. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--c);
+  background: var(--c-soft);
+  overflow-wrap: anywhere;
+}
+
+.chip .meta {
+  font-size: 0.8rem;
+}
+
+.to-fit .hint {
+  margin: 0;
 }
 
 /* ---------- Plans ---------- */

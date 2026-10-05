@@ -112,7 +112,7 @@ describe('Planner day view', () => {
   it('adds up time to fit in against free time', async () => {
     await renderPlanner([goal({ minutes: 30 }), task({ minutes: 60 })])
     expect(screen.getByText('1h 30m')).toBeInTheDocument()
-    expect(screen.getByText(/to fit in/)).toBeInTheDocument()
+    expect(screen.getByText('to fit in')).toBeInTheDocument()
     expect(screen.getByText(/Fits, with/)).toBeInTheDocument()
   })
 
@@ -141,14 +141,14 @@ describe('checking things off', () => {
     const reading = goal({ title: 'Reading' })
     const { user, all } = await renderPlanner([reading])
     await openPage(user, /To do/)
-    const box = screen.getByRole('checkbox', { name: 'Reading done' })
+    const box = () => screen.getByRole('checkbox', { name: 'Reading done' })
 
-    await user.click(box)
-    expect(box).toHaveAttribute('aria-checked', 'true')
+    await user.click(box())
+    expect(box()).toHaveAttribute('aria-checked', 'true')
     expect(all()).toContainEqual(expect.objectContaining({ kind: 'check', goal: reading.id, date: SAT }))
 
-    await user.click(box)
-    expect(box).toHaveAttribute('aria-checked', 'false')
+    await user.click(box())
+    expect(box()).toHaveAttribute('aria-checked', 'false')
     expect(all().some((r) => r.kind === 'check')).toBe(false)
   })
 
@@ -157,6 +157,108 @@ describe('checking things off', () => {
     await openPage(user, /To do/)
     await user.click(screen.getByRole('checkbox', { name: 'Lab done' }))
     expect(all()[0]).toMatchObject({ kind: 'task', doneOn: SAT })
+  })
+})
+
+describe('what is left', () => {
+  it('lists what is left first and folds finished goals and tasks away', async () => {
+    const { user } = await renderPlanner([
+      goal({ title: 'Duolingo' }),
+      goal({ title: 'Reading' }),
+      task({ title: 'Clean room' }),
+      task({ title: 'Essay' }),
+    ])
+    await openPage(user, /To do/)
+    const goals = within(screen.getByRole('region', { name: 'Daily goals' }))
+    expect(goals.getByText('2 left')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Duolingo done' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Clean room done' }))
+    expect(goals.getByText('1 left')).toBeInTheDocument()
+    // Finished ones sit under a closed Done fold, after what's left.
+    const fold = goals.getByText('Done (1)').closest('details')!
+    expect(fold).not.toHaveAttribute('open')
+    expect(within(fold).getByRole('checkbox', { name: 'Duolingo done' })).toHaveAttribute('aria-checked', 'true')
+    const titles = [...document.querySelectorAll('.list > .card .title')].map((t) => t.textContent)
+    expect(titles).toEqual(['Reading', 'Duolingo', 'Essay', 'Clean room'])
+    expect(screen.queryByText(/All done for today/)).not.toBeInTheDocument()
+
+    // Unchecking puts it back.
+    await user.click(within(fold).getByRole('checkbox', { name: 'Duolingo done' }))
+    expect(goals.getByText('2 left')).toBeInTheDocument()
+    expect(goals.queryByText(/^Done/)).not.toBeInTheDocument()
+  })
+
+  it('fills the bar as things are checked off', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' }), task({ title: 'Lab' })])
+    const summary = within(screen.getByRole('region', { name: 'Time today' }))
+    expect(summary.getByText('0 of 3 done')).toBeInTheDocument()
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    expect(summary.getByText('1 of 3 done')).toBeInTheDocument()
+    expect(document.querySelector('.bar .kind-task')!.getAttribute('style')).toMatch(/width: 33\.3/)
+  })
+
+  it('has no bar on a day with nothing to check off', async () => {
+    await renderPlanner([routine({ title: 'Band', days: [6] })])
+    expect(screen.queryByText(/ done$/)).not.toBeInTheDocument()
+    expect(document.querySelector('.bar')).toBeNull()
+  })
+
+  it('offers Undo right after checking something off', async () => {
+    const reading = goal({ title: 'Reading' })
+    const { user, all } = await renderPlanner([reading, task({ title: 'Essay' })])
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Reading done' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Reading done.')
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Reading done' })).toHaveAttribute('aria-checked', 'false')
+    expect(all().some((r) => r.kind === 'check')).toBe(false)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(all().find((r) => r.kind === 'task')).toMatchObject({ doneOn: null }))
+
+    // Unchecking doesn't need an undo.
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('says so when everything is done', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' }), task({ title: 'Essay' })])
+    await openPage(user, /To do/)
+    await user.click(screen.getByRole('checkbox', { name: 'Reading done' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Essay done' }))
+    expect(screen.getByText('All done for today. Nice work.')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Tasks' })).getByText('All done')).toBeInTheDocument()
+  })
+
+  it('shows what is still to fit in above the calendar, and schedules it with one tap', async () => {
+    const { user, all } = await renderPlanner([
+      goal({ title: 'Reading', minutes: 30 }),
+      goal({ title: 'Piano', start: '16:00' }), // already has a time
+      task({ title: 'Essay', minutes: 60 }),
+    ])
+    const toFit = within(screen.getByRole('region', { name: 'Still to fit in' }))
+    expect(toFit.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Schedule Reading',
+      'Schedule Essay',
+    ])
+    await user.click(toFit.getByRole('button', { name: 'Schedule Essay' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Essay is on at 1:15 PM')
+    await waitFor(() =>
+      expect(all().find((r) => r.kind === 'task')).toMatchObject({ at: { date: SAT, start: '13:15' } }),
+    )
+    expect(toFit.queryByRole('button', { name: 'Schedule Essay' })).not.toBeInTheDocument()
+  })
+
+  it('has nothing to fit in on a day that has gone', async () => {
+    const { user } = await renderPlanner([goal({ title: 'Reading' })])
+    expect(screen.getByRole('region', { name: 'Still to fit in' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+    expect(screen.queryByRole('region', { name: 'Still to fit in' })).not.toBeInTheDocument()
   })
 })
 
