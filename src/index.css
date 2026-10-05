@@ -473,6 +473,55 @@ button.card {
   color: var(--danger);
 }
 
+/* ---------- To do ---------- */
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.list-head h3 {
+  margin: 0;
+}
+
+.all-done {
+  margin: 0.5rem 0 1.5rem;
+}
+
+/* Still to fit in, above the calendar: one chip per goal or task. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--c);
+  background: var(--c-soft);
+  overflow-wrap: anywhere;
+}
+
+.chip .meta {
+  font-size: 0.8rem;
+}
+
+.to-fit .hint {
+  margin: 0;
+}
+
 /* ---------- Plans ---------- */
 
 .plans-section {

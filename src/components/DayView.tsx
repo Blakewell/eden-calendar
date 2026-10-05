@@ -13,6 +13,7 @@ import {
   taskStartOn,
   tasksOn,
   timeline,
+  toFitIn,
   untilBedtime,
 } from '../lib/plan'
 import type { Goal, Task } from '../lib/types'
@@ -20,6 +21,7 @@ import { KIND_LABEL } from '../lib/types'
 import { addDays, dueLabel, formatDay, formatDuration, formatTime, greeting, nowHHMM, today } from '../lib/dates'
 import type { Editable } from './Editor'
 import { DayCalendar } from './DayCalendar'
+import { Fold } from './Plans'
 
 export type DayTab = 'calendar' | 'todo'
 
@@ -76,8 +78,16 @@ export function DayView({
   // Unfinished goals and tasks only go into time that hasn't passed yet.
   const earliest = earliestStart(date, todayStr, now)
   // Anything with a slot on the calendar is already fitted in.
-  const goalLeft = goals.filter((g) => !goalStartOn(g, date) && !goalDone(g)).reduce((n, g) => n + g.minutes, 0)
-  const taskLeft = tasks.filter((t) => !t.doneOn && !taskStartOn(t, date)).reduce((n, t) => n + t.minutes, 0)
+  const unscheduled = toFitIn(data, date, todayStr)
+  const minutesOf = (kind: 'goal' | 'task') =>
+    unscheduled.filter((r) => r.kind === kind).reduce((n, r) => n + r.minutes, 0)
+  const goalLeft = minutesOf('goal')
+  const taskLeft = minutesOf('task')
+  // On To do, what's left comes first and finished things fold away.
+  const goalsOpen = goals.filter((g) => !goalDone(g))
+  const goalsDone = goals.filter(goalDone)
+  const tasksOpen = tasks.filter((t) => !t.doneOn)
+  const tasksDone = tasks.filter((t) => t.doneOn)
 
   // One tap: put it in the next free gap that fits (from now, when it's today).
   function schedule(rec: Goal | Task) {
@@ -97,6 +107,51 @@ export function DayView({
   const bedtime = hours[1] === MIDNIGHT ? 'midnight' : formatTime(hours[1])
   const toBed = untilBedtime(data.settings, date, now)
   const barTotal = Math.max(freeMinutes, toFit, 1)
+
+  const goalCard = (g: Goal) => (
+    <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
+      <button
+        className="check"
+        role="checkbox"
+        aria-checked={goalDone(g)}
+        aria-label={`${g.title} done`}
+        aria-disabled={readOnly || undefined}
+        onClick={() => !readOnly && onToggleGoal(g)}
+      />
+      <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
+        <span className="title">{g.title}</span>
+        <span className="meta">
+          {formatDuration(g.minutes)}
+          {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
+        </span>
+      </CardBody>
+      {!readOnly && earliest && !goalStartOn(g, date) && !goalDone(g) && (
+        <ScheduleButton rec={g} onSchedule={schedule} />
+      )}
+    </li>
+  )
+  const taskCard = (t: Task) => (
+    <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
+      <button
+        className="check"
+        role="checkbox"
+        aria-checked={!!t.doneOn}
+        aria-label={`${t.title} done`}
+        aria-disabled={readOnly || undefined}
+        onClick={() => !readOnly && onToggleTask(t)}
+      />
+      <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
+        <span className="title">{t.title}</span>
+        <span className="meta">
+          {formatDuration(t.minutes)}
+          {taskStartOn(t, date) && ` · ${formatTime(taskStartOn(t, date)!)}`}
+          {!t.doneOn && t.date < date && ' · from earlier'}
+          {t.due && !t.doneOn && <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>}
+        </span>
+      </CardBody>
+      {!readOnly && earliest && !taskStartOn(t, date) && !t.doneOn && <ScheduleButton rec={t} onSchedule={schedule} />}
+    </li>
+  )
 
   return (
     <>
@@ -169,6 +224,31 @@ export function DayView({
 
       {tab === 'calendar' ? (
         <>
+          {unscheduled.length > 0 && earliest && (
+            <section className="to-fit" aria-labelledby="to-fit">
+              <h3 id="to-fit">Still to fit in</h3>
+              <ul className="chips">
+                {unscheduled.map((r) => (
+                  <li key={r.id}>
+                    {readOnly ? (
+                      <span className={`chip kind-${r.kind}`}>
+                        <ChipText rec={r} />
+                      </span>
+                    ) : (
+                      <button
+                        className={`chip kind-${r.kind}`}
+                        aria-label={`Schedule ${r.title}`}
+                        onClick={() => schedule(r)}
+                      >
+                        <ChipText rec={r} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {!readOnly && <p className="muted small hint">Tap one to put it in the next free gap.</p>}
+            </section>
+          )}
           <section aria-labelledby="schedule">
             <h3 id="schedule">Schedule</h3>
             <p className="legend" aria-label="Colors">
@@ -201,68 +281,26 @@ export function DayView({
             <p className="muted empty-todo">Nothing to check off{isToday ? ' today' : ''}.</p>
           )}
 
+          {goalsOpen.length + tasksOpen.length === 0 && goals.length + tasks.length > 0 && (
+            <p className="muted all-done">All done{isToday ? ' for today' : ''}. Nice work.</p>
+          )}
+
           {goals.length > 0 && (
-            <section>
-              <h3>Daily goals</h3>
-              <ul className="list">
-                {goals.map((g) => (
-                  <li key={g.id} className={`card kind-goal${goalDone(g) ? ' done' : ''}`}>
-                    <button
-                      className="check"
-                      role="checkbox"
-                      aria-checked={goalDone(g)}
-                      aria-label={`${g.title} done`}
-                      aria-disabled={readOnly || undefined}
-                      onClick={() => !readOnly && onToggleGoal(g)}
-                    />
-                    <CardBody readOnly={readOnly} onClick={() => onEdit(g)}>
-                      <span className="title">{g.title}</span>
-                      <span className="meta">
-                        {formatDuration(g.minutes)}
-                        {goalStartOn(g, date) && ` · ${formatTime(goalStartOn(g, date)!)}`}
-                      </span>
-                    </CardBody>
-                    {!readOnly && earliest && !goalStartOn(g, date) && !goalDone(g) && (
-                      <ScheduleButton rec={g} onSchedule={schedule} />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <ListSection id="todo-goals" title="Daily goals" left={goalsOpen.length}>
+              <ul className="list">{goalsOpen.map(goalCard)}</ul>
+              <Fold label="Done" count={goalsDone.length}>
+                {goalsDone.map(goalCard)}
+              </Fold>
+            </ListSection>
           )}
 
           {tasks.length > 0 && (
-            <section>
-              <h3>Tasks</h3>
-              <ul className="list">
-                {tasks.map((t) => (
-                  <li key={t.id} className={`card kind-task${t.doneOn ? ' done' : ''}`}>
-                    <button
-                      className="check"
-                      role="checkbox"
-                      aria-checked={!!t.doneOn}
-                      aria-label={`${t.title} done`}
-                      aria-disabled={readOnly || undefined}
-                      onClick={() => !readOnly && onToggleTask(t)}
-                    />
-                    <CardBody readOnly={readOnly} onClick={() => onEdit(t)}>
-                      <span className="title">{t.title}</span>
-                      <span className="meta">
-                        {formatDuration(t.minutes)}
-                        {taskStartOn(t, date) && ` · ${formatTime(taskStartOn(t, date)!)}`}
-                        {!t.doneOn && t.date < date && ' · from earlier'}
-                        {t.due && !t.doneOn && (
-                          <span className={t.due < date ? 'overdue' : ''}> · {dueLabel(t.due, date)}</span>
-                        )}
-                      </span>
-                    </CardBody>
-                    {!readOnly && earliest && !taskStartOn(t, date) && !t.doneOn && (
-                      <ScheduleButton rec={t} onSchedule={schedule} />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <ListSection id="todo-tasks" title="Tasks" left={tasksOpen.length}>
+              <ul className="list">{tasksOpen.map(taskCard)}</ul>
+              <Fold label="Done" count={tasksDone.length}>
+                {tasksDone.map(taskCard)}
+              </Fold>
+            </ListSection>
           )}
 
           {maybe.length > 0 && (
@@ -281,6 +319,29 @@ export function DayView({
           )}
         </>
       )}
+    </>
+  )
+}
+
+// A To do checklist, with how many are left beside its heading.
+function ListSection({ id, title, left, children }: { id: string; title: string; left: number; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <div className="list-head">
+        <h3 id={id}>{title}</h3>
+        <span className="muted small">{left === 0 ? 'All done' : `${left} left`}</span>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function ChipText({ rec }: { rec: Goal | Task }) {
+  return (
+    <>
+      <span className="dot" aria-hidden="true" />
+      {rec.title}
+      <span className="meta">{formatDuration(rec.minutes)}</span>
     </>
   )
 }

@@ -18,6 +18,7 @@ import {
   split,
   tasksOn,
   timeline,
+  toFitIn,
   todoLeft,
   unschedule,
   type Block,
@@ -282,6 +283,30 @@ describe('todoLeft', () => {
     const data = split([reading, piano, task(), task({ doneOn: SAT }), task({ date: FRI }), makeCheck(reading.id, SAT)])
     expect(todoLeft(data, SAT, SAT)).toBe(2) // two open tasks (one carried over); reading is done
     expect(todoLeft(data, SUN, SAT)).toBe(1) // just reading
+  })
+})
+
+describe('toFitIn', () => {
+  it('lists goals and tasks not done and not on the calendar yet, goals first', () => {
+    const reading = goal({ title: 'Reading' })
+    const stretch = goal({ title: 'Stretch' })
+    const piano = goal({ title: 'Piano', start: '16:00' }) // has a usual time
+    const art = goal({ title: 'Art', moved: { [SAT]: '15:00' } }) // scheduled today
+    const essay = task({ title: 'Essay' })
+    const lab = task({ title: 'Lab', date: FRI }) // carried over
+    const data = split([
+      essay,
+      reading,
+      stretch,
+      piano,
+      art,
+      lab,
+      task({ title: 'Done', doneOn: SAT }),
+      task({ title: 'Placed', at: { date: SAT, start: '17:00' } }),
+      makeCheck(stretch.id, SAT),
+    ])
+    expect(toFitIn(data, SAT, SAT).map((r) => r.title)).toEqual(['Reading', 'Essay', 'Lab'])
+    expect(toFitIn(data, SUN, SAT).map((r) => r.title)).toEqual(['Art', 'Reading', 'Stretch'])
   })
 })
 

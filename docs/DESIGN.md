@@ -50,7 +50,7 @@ The layout is a native-app style: a top bar, the page, and tabs along the bottom
 
 | Tab | Page |
 | --- | --- |
-| Calendar | The day: date and summary, then the calendar |
+| Calendar | The day: date and summary, what's still to fit in, then the calendar |
 | To do | The same date and summary, then the checklists: Daily goals, Tasks, Maybe today. The tab shows how many goals and tasks are left (`todoLeft`). |
 | Plans | Everything that repeats or is coming up, one section per kind |
 
@@ -71,17 +71,18 @@ No tab is current on Awake hours or Share my day. Tapping the menu's backdrop or
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
 2. **Summary:** free time against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
-3. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
+3. **Still to fit in** (Calendar tab only): a chip for each goal and task that isn't done and has no time yet (`toFitIn`), in its kind's color with its length, so what's left is visible without leaving the calendar. Tapping a chip schedules it like the **Schedule** button. Hidden when there's nothing left, and on a day that's gone. View only on someone else's day.
+4. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
    **Moving things:** timed goals and timed fun can be dragged to a new time. Routines are fixed. On a touch screen, hold a block briefly (300ms) and then drag; a quick swipe still scrolls the page. With a mouse, just drag. A tap still opens the editor. Fun keeps its length. **A daily goal moves for that day only**: it saves a one-day exception, and its usual time (set in the editor) is unchanged. Dragging it back to its usual time clears the exception. A short hint under Schedule explains this when something on the day can move.
-4. **Scheduling goals and tasks** (all for that day only):
+5. **Scheduling goals and tasks** (all for that day only):
    - **One tap:** each Anytime goal and unscheduled task on the To do tab has a **Schedule** button, and tapping it switches to Calendar. It goes into the first free gap long enough for it, starting on a 5-minute mark and, on today, no earlier than now (`findSlot`). A status line says where it went ("Reading is on at 6:00 PM. Drag it to move it."), or gently says nothing fits.
    - **Tap an empty spot:** the picker first offers the day's unscheduled goals and tasks ("Fit something in at 3:00 PM"), unless that spot has already passed, then "Or add something new" with the four kinds.
    - Once on the calendar it can be dragged like anything else, is checked off as usual, and no longer counts in "to fit in".
    - **No scheduling into the past:** a goal or task that isn't done can't be put into time that has already passed (`earliestStart`): today it goes from now on, and on a day that's gone it can't be scheduled at all (no Schedule buttons, not offered when tapping a spot, can't be dragged). Dragging it earlier stops at now. Once it's checked off it can be moved anywhere, to show when it really happened. Routines and fun aren't affected, and anything already on the calendar stays where it is.
    - Its editor offers **Take it off the calendar for this day** (Anytime goals and tasks go back to the checklist) or **Back to its usual time** (timed goals).
-5. **Daily goals** checklist (all goals for the day, showing time when set), **Tasks** checklist, and **Maybe today** (untimed fun).
-6. The **+** in the top bar asks which kind, then opens the editor.
+6. **Daily goals** checklist (all goals for the day, showing time when set), **Tasks** checklist, and **Maybe today** (untimed fun). Each checklist shows how many are left beside its heading ("2 left", or "All done"), lists what's left first, and folds finished ones under a closed **Done (n)** that opens to uncheck them. When everything is checked off, a line says so ("All done for today. Nice work.").
+7. The **+** in the top bar asks which kind, then opens the editor.
 
 ### Plans
 
@@ -176,6 +177,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-05:** Usability pass on what's left. To do lists what's left first, with a count beside each heading, and folds finished goals and tasks under **Done**. The Calendar tab shows **Still to fit in**: one chip per unscheduled goal or task, tapped to schedule it.
 
 - **2026-10-04:** New home-screen icon, chosen by Eden: a clock with a school at 12, a dumbbell at 3, a music note at 6 and zzz at 9, on soft color triangles. The browser-tab icon matches.
 

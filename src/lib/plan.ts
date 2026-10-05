@@ -269,6 +269,15 @@ export function todoLeft(data: Data, date: string, today: string): number {
   return goals.length + tasks.length
 }
 
+// Goals and tasks on a day that aren't done and have no time on the calendar
+// yet: what's still to fit in. Goals first, then tasks (soonest due first).
+export function toFitIn(data: Data, date: string, today: string): (Goal | Task)[] {
+  return [
+    ...goalsOn(data.goals, date).filter((g) => !goalStartOn(g, date) && !data.checks.has(checkId(g.id, date))),
+    ...tasksOn(data.tasks, date, today).filter((t) => !t.doneOn && !taskStartOn(t, date)),
+  ]
+}
+
 // The Plans tab: everything that repeats or is coming up.
 
 // One-off routines from today on, soonest first.

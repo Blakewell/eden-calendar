@@ -161,7 +161,7 @@ function Section({
 }
 
 // Less-used groups, folded away until tapped.
-function Fold({ label, count, children }: { label: string; count: number; children: ReactNode }) {
+export function Fold({ label, count, children }: { label: string; count: number; children: ReactNode }) {
   if (count === 0) return null
   return (
     <details className="fold">
