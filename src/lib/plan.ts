@@ -253,6 +253,13 @@ export function timeline(blocks: Block[], hours: [string, string]): { slots: Slo
   return { slots, freeMinutes }
 }
 
+// Free minutes from `from` (now, on today) until bedtime. Time that has
+// already gone isn't free any more.
+export function freeFrom(blocks: Block[], hours: [string, string], from: string): number {
+  const start = toMinutes(from) > toMinutes(hours[0]) ? from : hours[0]
+  return timeline(blocks, [start, hours[1]]).freeMinutes
+}
+
 // Where a goal stands relative to today, for the Plans page.
 export type GoalStatus = 'active' | 'upcoming' | 'ended'
 
