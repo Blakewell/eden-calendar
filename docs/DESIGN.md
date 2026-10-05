@@ -70,7 +70,7 @@ No tab is current on Awake hours or Share my day. Tapping the menu's backdrop or
 ### Calendar and To do (the day)
 
 1. Greeting (today only), weekday and date, ←/Today/→ to change day.
-2. **Summary:** a progress bar that fills as the day's goals and tasks are checked off, in their colors ("3 of 7 done"; no bar when there's nothing to check off). Then free time against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
+2. **Summary:** a progress bar that fills as the day's goals and tasks are checked off, in their colors ("3 of 7 done"; no bar when there's nothing to check off). Then free time (on today, only from now until bedtime, `freeFrom`; other days count the whole awake day) against time still to fit in (anytime goals not yet done plus open tasks), with a gentle note when it doesn't fit. Goals with a start time already have a slot, so they aren't counted again. On today it also shows how long is left until bedtime ("9h 15m until bedtime (10:30 PM)", `untilBedtime`).
 3. **Still to fit in** (Calendar tab only): a chip for each goal and task that isn't done and has no time yet (`toFitIn`), in its kind's color with its length, so what's left is visible without leaving the calendar. Tapping a chip schedules it like the **Schedule** button. Hidden when there's nothing left, and on a day that's gone. View only on someone else's day.
 4. **Schedule:** the day calendar. Hours run down the left, from awake time to bedtime (stretched to whole hours, and further if something falls outside). Routines, timed fun and timed goals are placed at their real times and heights. Overlapping blocks sit side by side. Free gaps of 30 minutes or more are labelled. A line marks the current time, and the block happening now is tinted with a "now" tag. Timed goals that are checked off look done.
 
@@ -177,6 +177,8 @@ Google sign-in only, invite-only (Google OAuth Testing mode plus a database allo
 All of these run on every pull request in CI. Unit and component tests freeze time to Saturday Oct 3 2026, 1:15 PM. Playwright tests run the app in local mode, so they need no sign-in.
 
 ## Change log
+
+- **2026-10-05:** Free time on today counts only from now until bedtime, so at 7 PM it's never more than the time left before bed.
 
 - **2026-10-05:** Usability pass on what's left. To do lists what's left first, with a count beside each heading, and folds finished goals and tasks under **Done**. The Calendar tab shows **Still to fit in**: one chip per unscheduled goal or task, tapped to schedule it. The summary bar now shows progress (how many goals and tasks are checked off) instead of time to fit in against free time, and checking something off offers **Undo** for a few seconds.
 

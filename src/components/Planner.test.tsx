@@ -116,6 +116,15 @@ describe('Planner day view', () => {
     expect(screen.getByText(/Fits, with/)).toBeInTheDocument()
   })
 
+  it('counts free time from now on today, and the whole day on other days', async () => {
+    const { user } = await renderPlanner()
+    const summary = screen.getByRole('region', { name: 'Time today' })
+    // It's 1:15 PM on Saturday; weekend bedtime is 10:30 PM.
+    expect(summary).toHaveTextContent('9h 15m free')
+    await user.click(screen.getByRole('button', { name: 'Next day' }))
+    expect(summary).toHaveTextContent('13h 30m free') // 9 AM to 10:30 PM
+  })
+
   it('warns gently when there is more to do than free time', async () => {
     await renderPlanner([
       routine({ title: 'All day', days: [6], start: '09:00', end: '22:00' }),

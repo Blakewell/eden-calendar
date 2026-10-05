@@ -7,6 +7,7 @@ import {
   calendarRange,
   checkId,
   findSlot,
+  freeFrom,
   goalStartOn,
   goalStatus,
   goalsOn,
@@ -283,6 +284,21 @@ describe('todoLeft', () => {
     const data = split([reading, piano, task(), task({ doneOn: SAT }), task({ date: FRI }), makeCheck(reading.id, SAT)])
     expect(todoLeft(data, SAT, SAT)).toBe(2) // two open tasks (one carried over); reading is done
     expect(todoLeft(data, SUN, SAT)).toBe(1) // just reading
+  })
+})
+
+describe('freeFrom', () => {
+  const hours: [string, string] = ['09:00', '22:30']
+  const lunch = blocksOn(split([fun({ start: '13:00', end: '14:00' })]), SAT, SAT)
+
+  it('counts free time from now until bedtime, skipping what is booked', () => {
+    expect(freeFrom(lunch, hours, '13:15')).toBe(8 * 60 + 30) // 2 PM to 10:30 PM
+    expect(freeFrom(lunch, hours, '19:00')).toBe(3 * 60 + 30)
+  })
+
+  it('is the whole awake day before getting up, and nothing after bedtime', () => {
+    expect(freeFrom(lunch, hours, '07:00')).toBe(12 * 60 + 30)
+    expect(freeFrom(lunch, hours, '23:00')).toBe(0)
   })
 })
 

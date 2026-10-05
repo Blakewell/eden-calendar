@@ -7,6 +7,7 @@ import {
   checkId,
   earliestStart,
   findSlot,
+  freeFrom,
   funOn,
   goalStartOn,
   goalsOn,
@@ -79,7 +80,9 @@ export function DayView({
 
   const blocks = blocksOn(data, date, todayStr)
   const hours = awakeHours(data.settings, date)
-  const { slots, freeMinutes } = timeline(blocks, hours)
+  const { slots, freeMinutes: dayFree } = timeline(blocks, hours)
+  // On today, only what's left of the day counts as free.
+  const freeMinutes = isToday ? freeFrom(blocks, hours, now) : dayFree
   const goals = goalsOn(data.goals, date)
   const tasks = tasksOn(data.tasks, date, todayStr)
   const maybe = funOn(data.fun, date).filter((f) => !f.start)
